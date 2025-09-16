@@ -1,6 +1,7 @@
 'use client'
 import styled from 'styled-components'
 import Link from 'next/link'
+import { useSession, signIn, signOut } from 'next-auth/react'
 
 const Bar = styled.header`
   display: flex;
@@ -23,16 +24,30 @@ const Nav = styled.nav`
   display: flex; gap: 16px;
   a { opacity: 0.9; }
   a:hover { opacity: 1; }
+  button {
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: ${({ theme }) => theme.colors.primary};
+    color: #0b1220;
+    font-weight: 700;
+    cursor: pointer;
+  }
 `
 
 export default function Header() {
+  const { data: session, status } = useSession()
   return (
     <Bar>
       <Brand href="/">QuantSportsClub</Brand>
       <Nav>
         <Link href="/about">About</Link>
         <Link href="/dashboard">Dashboard</Link>
-        <Link href="https://github.com/" target="_blank">GitHub</Link>
+        {status === 'authenticated' ? (
+          <button onClick={() => signOut({ callbackUrl: '/' })}>Sign out</button>
+        ) : (
+          <button onClick={() => signIn('github', { callbackUrl: '/dashboard' })}>Sign in</button>
+        )}
       </Nav>
     </Bar>
   )
