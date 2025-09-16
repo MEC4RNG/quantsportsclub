@@ -1,7 +1,16 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
-// mock prisma
-vi.mock('@/lib/db', () => import('./__mocks__/dbMock'))
+// Inline mock for Prisma client used by the route
+vi.mock('@/lib/db', () => ({
+  prisma: {
+    bankrollEntry: {
+      findMany: async () => [
+        { id: 'b1', userId: 'u1', units: 100, kind: 'deposit', createdAt: new Date() },
+      ],
+      create: async (args: any) => ({ id: 'b2', ...args.data }),
+    },
+  },
+}))
 
 import { GET, POST } from '@/app/api/bankroll/route'
 import { _resetRateLimitStore } from '@/lib/rateLimit'

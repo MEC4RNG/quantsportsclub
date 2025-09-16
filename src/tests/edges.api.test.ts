@@ -1,7 +1,14 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
-// mock prisma
-vi.mock('@/lib/db', () => import('./__mocks__/dbMock'))
+// Inline mock for Prisma client used by the route
+vi.mock('@/lib/db', () => ({
+  prisma: {
+    edge: {
+      findMany: async () => [{ id: 'e1', sport: 'NFL', createdAt: new Date() }],
+      create: async (args: any) => ({ id: 'e2', ...args.data }),
+    },
+  },
+}))
 
 import { GET, POST } from '@/app/api/edges/route'
 import { _resetRateLimitStore } from '@/lib/rateLimit'

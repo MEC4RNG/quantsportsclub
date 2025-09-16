@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
+import { logger } from '@/lib/log'
+import { rateLimit, getClientIp } from '@/lib/rateLimit'
 
 const CreateEdge = z.object({
   sport: z.string(),
@@ -25,11 +27,38 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const ip = getClientIp(req)
+    const r = rateLimit({ key: `edges:${ip}`, limit: 10, windowMs: 60_000 })
+    if (!r.ok) {
+      logger.warn({ ip, route: 'edges', event: 'rate_limited' })
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        {
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': '10',
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': String(r.reset),
+          },
+        },
+      )
+    }
+
     const data = await req.json()
     const parsed = CreateEdge.parse(data)
     const created = await prisma.edge.create({ data: parsed })
-    return NextResponse.json(created, { status: 201 })
+    logger.info({ ip, route: 'edges', event: 'create', id: created.id })
+
+    return NextResponse.json(created, {
+      status: 201,
+      headers: {
+        'X-RateLimit-Limit': '10',
+        'X-RateLimit-Remaining': String(r.remaining),
+        'X-RateLimit-Reset': String(r.reset),
+      },
+    })
   } catch (err: any) {
+    logger.error({ route: 'edges', event: 'error', err: err?.message })
     return NextResponse.json({ error: err.message }, { status: 400 })
   }
 }
