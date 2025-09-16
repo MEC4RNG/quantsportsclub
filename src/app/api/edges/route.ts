@@ -28,7 +28,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const ip = getClientIp(req)
-    const r = rateLimit({ key: `edges:${ip}`, limit: 10, windowMs: 60_000 })
+    const r = await rateLimit({
     if (!r.ok) {
       logger.warn({ ip, route: 'edges', event: 'rate_limited' })
       return NextResponse.json(

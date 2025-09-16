@@ -23,6 +23,8 @@
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",
     "@prisma/client": "latest",
+    "@upstash/ratelimit": "^2.0.6",
+    "@upstash/redis": "^1.35.3",
     "next": "latest",
     "next-auth": "^4.24.11",
     "pino": "^9.9.5",
