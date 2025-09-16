@@ -1,10 +1,8 @@
 import type { Metadata } from 'next'
 import StyledComponentsRegistry from './registry'
-import GlobalStyle from '@/styles/GlobalStyle'
-import { ThemeProvider } from 'styled-components'
-import { theme } from '@/styles/theme'
 import Header from '@/components/Header'
 import Providers from '@/components/Providers'
+import ThemeClient from '@/components/ThemeClient'
 
 export const metadata: Metadata = {
   title: 'QuantSportsClub',
@@ -16,13 +14,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <StyledComponentsRegistry>
-          <ThemeProvider theme={theme}>
-            <GlobalStyle />
+          <ThemeClient>
             <Providers>
               <Header />
               {children}
             </Providers>
-          </ThemeProvider>
+          </ThemeClient>
         </StyledComponentsRegistry>
       </body>
     </html>
