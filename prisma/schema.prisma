@@ -3,8 +3,10 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+  // shadowDatabaseUrl = env("SHADOW_DATABASE_URL") // optional during migrate dev
 }
 
 model User {
@@ -15,7 +17,6 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // relations
   accounts  Account[]
   sessions  Session[]
   bets      Bet[]
@@ -92,7 +93,7 @@ model Bet {
   side       String
   price      Float
   stakeUnits Float
-  result     String?   // "win" | "loss" | "push" | null (pending)
+  result     String?   
   settledAt  DateTime?
   createdAt  DateTime  @default(now())
 
@@ -102,7 +103,7 @@ model Bet {
 model BankrollEntry {
   id        String   @id @default(cuid())
   userId    String
-  kind      String   // "deposit" | "withdrawal" | "bet" | "win" | "loss" | "adjustment"
+  kind      String
   units     Float
   notes     String?
   createdAt DateTime @default(now())
