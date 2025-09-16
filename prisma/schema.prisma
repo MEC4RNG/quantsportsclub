@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bets      Bet[]
+  bankroll  BankrollEntry[]
+}
+
+model ModelRun {
+  id        String   @id @default(cuid())
+  name      String
+  version   String?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  edges     Edge[]
+}
+
+model Edge {
+  id         String   @id @default(cuid())
+  sport      String
+  league     String?
+  eventId    String?
+  market     String?
+  pick       String?
+  fairOdds   Float?
+  bookOdds   Float?
+  edgePct    Float?
+  stakeUnits Float?
+  createdAt  DateTime @default(now())
+
+  modelRunId String?
+  modelRun   ModelRun? @relation(fields: [modelRunId], references: [id])
+}
+
+model Bet {
+  id         String   @id @default(cuid())
+  userId     String
+  event      String
+  side       String
+  price      Float
+  stakeUnits Float
+  result     String?   // "win" | "loss" | "push" | null (pending)
+  settledAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model BankrollEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  kind      String   // "deposit" | "withdrawal" | "bet" | "win" | "loss" | "adjustment"
+  units     Float
+  notes     String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
