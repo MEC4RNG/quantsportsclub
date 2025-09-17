@@ -1,21 +1,11 @@
 import { NextResponse } from 'next/server'
-import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/log'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
-
-const CreateBankrollEntry = z.object({
-  userId: z.string(),
-  kind: z.enum(['deposit', 'withdrawal', 'bet', 'win', 'loss', 'adjustment']),
-  units: z.number(),
-  notes: z.string().optional(),
-})
+import { CreateBankrollEntry } from '@/schemas/bankroll'
 
 export async function GET() {
-  const rows = await prisma.bankrollEntry.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: 50,
-  })
+  const rows = await prisma.bankrollEntry.findMany({ orderBy: { createdAt: 'desc' }, take: 50 })
   return NextResponse.json(rows)
 }
 
@@ -27,14 +17,7 @@ export async function POST(req: Request) {
       logger.warn({ ip, route: 'bankroll', event: 'rate_limited' })
       return NextResponse.json(
         { error: 'Too many requests' },
-        {
-          status: 429,
-          headers: {
-            'X-RateLimit-Limit': String(r.limit ?? 10),
-            'X-RateLimit-Remaining': '0',
-            'X-RateLimit-Reset': String(r.reset),
-          },
-        },
+        { status: 429, headers: { 'X-RateLimit-Limit': String(r.limit ?? 10), 'X-RateLimit-Remaining': '0', 'X-RateLimit-Reset': String(r.reset) } }
       )
     }
 
