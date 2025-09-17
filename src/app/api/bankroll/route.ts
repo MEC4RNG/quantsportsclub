@@ -22,7 +22,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const ip = getClientIp(req)
-    const r = await rateLimit({
+    const r = await rateLimit({ key: `bankroll:${ip}`, limit: 10, windowMs: 60_000 })
     if (!r.ok) {
       logger.warn({ ip, route: 'bankroll', event: 'rate_limited' })
       return NextResponse.json(
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
         {
           status: 429,
           headers: {
-            'X-RateLimit-Limit': '10',
+            'X-RateLimit-Limit': String(r.limit ?? 10),
             'X-RateLimit-Remaining': '0',
             'X-RateLimit-Reset': String(r.reset),
           },
@@ -46,13 +46,14 @@ export async function POST(req: Request) {
     return NextResponse.json(created, {
       status: 201,
       headers: {
-        'X-RateLimit-Limit': '10',
+        'X-RateLimit-Limit': String(r.limit ?? 10),
         'X-RateLimit-Remaining': String(r.remaining),
         'X-RateLimit-Reset': String(r.reset),
       },
     })
-  } catch (err: any) {
-    logger.error({ route: 'bankroll', event: 'error', err: err?.message })
-    return NextResponse.json({ error: err.message }, { status: 400 })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Unknown error'
+    logger.error({ route: 'bankroll', event: 'error', err: msg })
+    return NextResponse.json({ error: msg }, { status: 400 })
   }
 }

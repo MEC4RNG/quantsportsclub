@@ -36,7 +36,7 @@ const Nav = styled.nav`
 `
 
 export default function Header() {
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   return (
     <Bar>
       <Brand href="/">QuantSportsClub</Brand>
