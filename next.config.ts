@@ -1,9 +1,13 @@
+// next.config.ts
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  reactStrictMode: true,
   compiler: {
-    styledComponents: true,
+    styledComponents: {
+      ssr: true,
+      displayName: true,
+      // optional: fileName: false, minify: true, pure: true
+    },
   },
 }
 

@@ -1,17 +1,13 @@
-import styled from 'styled-components'
-
-const Wrap = styled.main`
-  max-width: 900px; margin: 40px auto; padding: 24px;
-`
+export const dynamic = 'force-dynamic'
 
 export default function AboutPage() {
   return (
-    <Wrap>
+    <main style={{ maxWidth: 900, margin: '40px auto', padding: 24 }}>
       <h2>About QuantSportsClub</h2>
       <p>
         This site will host model outputs, bankroll logs, and explainers on sharp betting
-        principles (value, line movement, Kelly). Built with Next.js + styled-components.
+        principles (value, line movement, Kelly). Built with Next.js.
       </p>
-    </Wrap>
+    </main>
   )
 }
