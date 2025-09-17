@@ -3,6 +3,7 @@ import { extendZodWithOpenApi, OpenAPIRegistry, generateOpenApiDocument } from '
 import { z } from 'zod'
 import { CreateEdge } from '@/schemas/edges'
 import { CreateBankrollEntry } from '@/schemas/bankroll'
+import { CreateBet, SettleBet } from '@/schemas/bets'
 
 extendZodWithOpenApi(z)
 
@@ -15,6 +16,21 @@ export async function GET() {
 
   // Paths
   registry.registerPath({
+  registry.registerPath({
+    method: 'get', path: '/api/bets',
+    responses: { 200: { description: 'List bets' } },
+  })
+  registry.registerPath({
+    method: 'post', path: '/api/bets',
+    request: { body: { content: { 'application/json': { schema: CreateBet } } } },
+    responses: { 201: { description: 'Created' }, 400: { description: 'Bad Request' }, 429: { description: 'Rate limited' } },
+  })
+  registry.registerPath({
+    method: 'post', path: '/api/bets/{id}/settle',
+    request: { body: { content: { 'application/json': { schema: SettleBet } } } },
+    responses: { 200: { description: 'Settled' }, 400: { description: 'Bad Request' }, 429: { description: 'Rate limited' } },
+    pathParams: [ { name: 'id', schema: { type: 'string' } } ],
+  })
     method: 'get',
     path: '/api/edges',
     responses: { 200: { description: 'List edges', content: { 'application/json': { schema: z.array(z.object({})) } } } }, // response type left broad
