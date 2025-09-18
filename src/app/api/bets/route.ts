@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'      // <-- add this
 import { logger } from '@/lib/log'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { CreateBet } from '@/schemas/bets'
@@ -13,16 +14,13 @@ export async function POST(req: Request) {
   try {
     const ip = getClientIp(req)
     const r = await rateLimit({ key: `bets:${ip}`, limit: 10, windowMs: 60_000 })
-    if (!r.ok) {
-      logger.warn({ ip, route: 'bets', event: 'rate_limited' })
-      return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
-    }
+    if (!r.ok) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
 
     const data = await req.json()
     const parsed = CreateBet.parse(data)
 
-    // Create Bet and a bankroll 'bet' entry atomically
-    const result = await prisma.$transaction(async (tx) => {
+    // ✅ Use Prisma.TransactionClient
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const createdBet = await tx.bet.create({ data: { ...parsed, status: 'pending' } })
       await tx.bankrollEntry.create({
         data: {
