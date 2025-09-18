@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { Prisma } from '@prisma/client'      // <-- add this
+import { Prisma } from '@prisma/client'
 import { logger } from '@/lib/log'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
+import { requireApiKey } from '@/lib/authz'
 import { CreateBet } from '@/schemas/bets'
 
 export async function GET() {
@@ -11,6 +12,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const unauth = requireApiKey(req)
+  if (unauth) return unauth
+
   try {
     const ip = getClientIp(req)
     const r = await rateLimit({ key: `bets:${ip}`, limit: 10, windowMs: 60_000 })
@@ -19,7 +23,6 @@ export async function POST(req: Request) {
     const data = await req.json()
     const parsed = CreateBet.parse(data)
 
-    // ✅ Use Prisma.TransactionClient
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const createdBet = await tx.bet.create({ data: { ...parsed, status: 'pending' } })
       await tx.bankrollEntry.create({

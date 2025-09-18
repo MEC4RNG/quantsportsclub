@@ -1,14 +1,18 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { Prisma } from '@prisma/client'        // <-- add this
+import { Prisma } from '@prisma/client'
 import { logger } from '@/lib/log'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
+import { requireApiKey } from '@/lib/authz'
 import { SettleBet } from '@/schemas/bets'
 
 export async function POST(
   req: Request,
-  ctx: { params: Promise<{ id: string }> }
+  ctx: { params: Promise<{ id: string }> } // Next 15
 ) {
+  const unauth = requireApiKey(req)
+  if (unauth) return unauth
+
   try {
     const { id } = await ctx.params
 
@@ -19,7 +23,6 @@ export async function POST(
     const data = await req.json()
     const parsed = SettleBet.parse(data)
 
-    // ✅ Use Prisma.TransactionClient
     const settled = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const bet = await tx.bet.findUnique({ where: { id } })
       if (!bet) throw new Error('Bet not found')
@@ -59,7 +62,6 @@ export async function POST(
           data: { userId: bet.userId, kind: 'loss', units: Math.abs(realized), notes: `Bet ${bet.id}` },
         })
       }
-
       return updated
     })
 
