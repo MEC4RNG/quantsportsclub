@@ -33,3 +33,14 @@ export function kellyFraction(p: number, d: number): number {
   const f = (b * p - (1 - p)) / b
   return Math.max(0, f)
 }
+
+/** Edge % from book vs fair American odds (positive = value). */
+export function edgePercentFromAmerican(book: number, fair: number): number {
+  // convert to implied probs
+  const pb = impliedFromAmerican(book)
+  const pf = impliedFromAmerican(fair)
+  // value as "expected ROI" in percentage terms: (pf - pb) / pb * 100
+  // (there are multiple conventions; this one is intuitive for UI sorting)
+  if (!Number.isFinite(pb) || pb <= 0) return 0
+  return ((pf - pb) / pb) * 100
+}
