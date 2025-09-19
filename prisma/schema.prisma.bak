@@ -87,30 +87,18 @@ model Edge {
 }
 
 model Bet {
-  id            String   @id @default(cuid())
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id         String   @id @default(cuid())
+  userId     String
+  event      String
+  side       String
+  price      Float
+  stakeUnits Float
+  result     String?   
+  settledAt  DateTime?
+  createdAt  DateTime  @default(now())
 
-  // Relation to User (this is what was missing)
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Your bet fields
-  sport         String
-  league        String?
-  eventId       String?
-  market        String?
-  pick          String
-  stakeUnits    Float
-  oddsAmerican  Int?
-  oddsDecimal   Float?
-  notes         String?
-  status        String   @default("pending")
-  realizedUnits Float?
-
-  @@index([userId, createdAt])
+  user User @relation(fields: [userId], references: [id])
 }
-
 
 model BankrollEntry {
   id        String   @id @default(cuid())
@@ -122,5 +110,3 @@ model BankrollEntry {
 
   user User @relation(fields: [userId], references: [id])
 }
-
-
