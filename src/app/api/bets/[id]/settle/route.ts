@@ -1,4 +1,5 @@
 // src/app/api/bets/[id]/settle/route.ts
+import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
@@ -12,7 +13,9 @@ const SettleBet = z.object({
   realizedUnits: z.number().optional().nullable(),
 })
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params
+
   const ip = getClientIp(req)
   const r = await rateLimit({ key: `bets:settle:${ip}`, limit: 20, windowMs: 60_000 })
   if (!r.ok) {
@@ -21,7 +24,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   try {
-    const { id } = params
     const body = await req.json()
     const data = SettleBet.parse(body)
 
@@ -30,13 +32,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       if (!bet) throw new Error('Bet not found')
       if (bet.status !== 'pending') throw new Error('Bet already settled')
 
-      // If caller didn’t pass realizedUnits, compute a sensible default
       let realized = data.realizedUnits ?? null
       if (realized == null) {
         if (data.outcome === 'void') {
           realized = 0
         } else if (data.outcome === 'win') {
-          // profit per unit from American odds; if missing, assume even money
           const d = bet.bookOdds != null ? americanToDecimal(bet.bookOdds) : 2
           realized = Number((bet.stakeUnits * (d - 1)).toFixed(4))
         } else if (data.outcome === 'loss') {
@@ -46,10 +46,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
       return await tx.bet.update({
         where: { id },
-        data: {
-          status: data.outcome,
-          realizedUnits: realized,
-        },
+        data: { status: data.outcome, realizedUnits: realized },
       })
     })
 

@@ -1,23 +1,14 @@
 // src/lib/ip.ts
+import type { NextRequest } from 'next/server'
 
-/**
- * Best-effort client IP extraction for Next.js App Router route handlers.
- * Works on Vercel and locally. Falls back to loopback if nothing is present.
- */
-export function getClientIp(req: Request): string {
-  const h = req.headers
-
-  // Common proxy/CDN headers (first IP is the client, rest are proxies)
-  const xff =
-    h.get('x-forwarded-for') ||
-    h.get('x-real-ip') ||
-    h.get('cf-connecting-ip') ||
-    h.get('fastly-client-ip') ||
-    h.get('true-client-ip') ||
-    h.get('x-vercel-proxied-for')
-
-  if (xff) return xff.split(',')[0]!.trim()
-
-  // Last resort for local/dev
+/** Best-effort client IP from headers; safe for dev/tests. */
+export function getClientIp(req: Request | NextRequest): string {
+  const xff = req.headers.get('x-forwarded-for')
+  if (xff) {
+    const ip = xff.split(',')[0]?.trim()
+    if (ip) return ip
+  }
+  const real = req.headers.get('x-real-ip')
+  if (real) return real
   return '127.0.0.1'
 }
