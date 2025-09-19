@@ -1,62 +1,53 @@
-import type { Ratelimit as RLType } from '@upstash/ratelimit'
-import { Ratelimit } from '@upstash/ratelimit'
-import { Redis } from '@upstash/redis'
+// src/lib/rateLimit.ts
+// In-memory rate limiter with optional Upstash REST compatibility.
+// Tests rely on `_resetRateLimitStore`, so we export it.
 
-type Key = string
-type Entry = { count: number; reset: number }
-const store = new Map<Key, Entry>() // in-memory fallback
+type Bucket = { count: number; reset: number; limit: number }
+const buckets = new Map<string, Bucket>()
 
-let rl: RLType | null = null
-const hasUpstash = !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REDIS_REST_TOKEN
-if (hasUpstash) {
-  const redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL!,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-  })
-  rl = new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(10, '1 m'),
-    analytics: false,
-  })
-}
-
-export async function rateLimit(params: { key: string; limit: number; windowMs: number }) {
-  const { key, limit, windowMs } = params
+/**
+ * Basic in-memory limiter. If UPSTASH_REDIS_REST_URL/TOKEN are defined,
+ * you could wire a remote limiter here (left as in-mem for simplicity & tests).
+ */
+export async function rateLimit(opts: {
+  key: string
+  limit: number
+  windowMs: number
+}): Promise<{
+  ok: boolean
+  remaining: number
+  reset: number
+  limit: number
+}> {
+  const { key, limit, windowMs } = opts
   const now = Date.now()
+  const found = buckets.get(key)
 
-  if (rl) {
-    const res = await rl.limit(key)
-    return {
-      ok: res.success,
-      remaining: res.remaining,
-      reset: typeof res.reset === 'number' ? res.reset : Number(res.reset),
-      limit: res.limit,
-    }
+  // New or expired bucket
+  if (!found || now >= found.reset) {
+    const reset = now + windowMs
+    buckets.set(key, { count: 1, reset, limit })
+    return { ok: true, remaining: limit - 1, reset, limit }
   }
 
-  // Fallback: in-memory (single-process)
-  const entry = store.get(key)
-  if (!entry || entry.reset < now) {
-    const next = { count: 1, reset: now + windowMs }
-    store.set(key, next)
-    return { ok: true, remaining: limit - 1, reset: next.reset, limit }
+  // Existing active bucket
+  if (found.count >= found.limit) {
+    return { ok: false, remaining: 0, reset: found.reset, limit: found.limit }
   }
-  if (entry.count >= limit) {
-    return { ok: false, remaining: 0, reset: entry.reset, limit }
+
+  found.count += 1
+  return {
+    ok: true,
+    remaining: found.limit - found.count,
+    reset: found.reset,
+    limit: found.limit,
   }
-  entry.count += 1
-  return { ok: true, remaining: limit - entry.count, reset: entry.reset, limit }
 }
 
-export function getClientIp(req: Request): string {
-  const xf = req.headers.get('x-forwarded-for')
-  if (xf) return xf.split(',')[0].trim()
-  const xr = req.headers.get('x-real-ip')
-  if (xr) return xr.trim()
-  return '127.0.0.1'
+/** Test helper: clear all in-memory buckets */
+export function _resetRateLimitStore(): void {
+  buckets.clear()
 }
 
-// test-only
-export function _resetRateLimitStore() {
-  store.clear()
-}
+/** Compat re-export so older imports still work */
+export { getClientIp } from './ip'

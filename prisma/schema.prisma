@@ -90,6 +90,10 @@ model Bet {
   id            String   @id @default(cuid())
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  // --- Sizing inputs (optional)
+  bookOdds   Int?
+  fairOdds   Int?
+  edgePct    Decimal? @db.Decimal(8,4) // store % as e.g. 3.25 => 3.2500
 
   // Relation to User (this is what was missing)
   userId        String

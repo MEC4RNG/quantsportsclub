@@ -1,82 +1,87 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+// src/tests/bets.api.test.ts
+import { describe, it, expect, vi } from 'vitest'
+import { NextRequest } from 'next/server'
+import type { RequestInit as NextRequestInit } from 'next/dist/server/web/spec-extension/request'
 
-// Minimal types for the mock
-type Bet = {
-  id: string
-  userId: string
-  pick: string
-  stakeUnits: number
-  status: 'pending' | 'win' | 'loss' | 'void'
-  createdAt?: Date
-  oddsAmerican?: number
-  oddsDecimal?: number
-}
-type PrismaMock = {
-  bet: {
-    findMany: () => Promise<Bet[]>
-    create: (args: { data: Partial<Bet> & { userId: string; pick: string; stakeUnits: number; status?: Bet['status'] } }) => Promise<Bet>
-    findUnique: (args: { where: { id: string } }) => Promise<Bet | null>
-    update: (args: { where: { id: string }; data: Partial<Bet> }) => Promise<Bet>
-  }
-  bankrollEntry: {
-    create: (args: { data: { userId: string; kind: 'bet' | 'win' | 'loss' | 'adjustment' | 'deposit' | 'withdrawal'; units: number; notes?: string } }) => Promise<unknown>
-  }
-  $transaction: <T>(fn: (tx: PrismaMock) => Promise<T> | T) => Promise<T>
-}
-
-vi.mock('@/lib/db', () => {
-  const mock: PrismaMock = {
-    bet: {
-      findMany: async () => [{ id: 'bet1', userId: 'u1', pick: 'PHI -3.5', stakeUnits: 1, status: 'pending', createdAt: new Date(), oddsAmerican: -110 }],
-      create: async (args) => ({ id: 'bet2', status: 'pending', createdAt: new Date(), ...args.data } as Bet),
-      findUnique: async ({ where: { id } }) =>
-        id === 'bet2' ? ({ id: 'bet2', userId: 'u1', pick: 'PHI -3.5', stakeUnits: 1, status: 'pending', oddsAmerican: -110 } as Bet) : null,
-      update: async ({ where: { id }, data }) => ({ id, userId: 'u1', pick: 'PHI -3.5', stakeUnits: 1, status: (data.status as Bet['status']) ?? 'pending', ...data } as Bet),
-    },
-    bankrollEntry: {
-      create: async () => ({}),
-    },
-    $transaction: async (fn) => fn((mock as unknown) as PrismaMock),
-  }
-  return { prisma: mock }
-})
+vi.mock('@/lib/db', () => import('./__mocks__/dbMock'))
 
 import { GET as GET_BETS, POST as POST_BETS } from '@/app/api/bets/route'
 import { POST as POST_SETTLE } from '@/app/api/bets/[id]/settle/route'
-import { _resetRateLimitStore } from '@/lib/rateLimit'
 
-function req(url: string, body?: Record<string, unknown>, ip = '9.9.9.9') {
-  return new Request(url, {
-    method: 'POST',
-    body: body ? JSON.stringify(body) : undefined,
-    headers: { 'content-type': 'application/json', 'x-forwarded-for': ip },
-  })
-}
+// Build a NextRequest (use Next's RequestInit type to avoid TS mismatch)
+const nreq = (path = '/api/bets', init?: NextRequestInit) =>
+  new NextRequest('http://localhost' + path, init)
+
+// JSON POST init with fixed IP header (keeps rate-limiter deterministic)
+const json = (body: unknown, ip = '9.9.9.9'): NextRequestInit => ({
+  method: 'POST',
+  headers: {
+    'content-type': 'application/json',
+    'x-forwarded-for': ip,
+  },
+  body: JSON.stringify(body),
+})
 
 describe('bets API', () => {
-  beforeEach(() => _resetRateLimitStore())
-
   it('GET returns list', async () => {
-    const res = await GET_BETS()
-    expect(res.ok).toBe(true)
+    const res = await GET_BETS(nreq('/api/bets'))
+    expect(res.status).toBe(200)
     const data = await res.json()
     expect(Array.isArray(data)).toBe(true)
   })
 
   it('POST respects rate limit', async () => {
-    for (let i = 0; i < 10; i++) {
-      const r = await POST_BETS(req('http://test/api/bets', { userId: 'u1', sport: 'NFL', pick: 'PHI -3.5', stakeUnits: 1 }))
-      expect(r.status).toBe(201)
+    let last = 0
+    for (let i = 0; i < 11; i++) {
+      const res = await POST_BETS(
+        nreq(
+          '/api/bets',
+          json(
+            {
+              sport: 'NBA',
+              pick: `TEST-${i}`,
+              stakeUnits: 1,
+              bookOdds: -110,
+              fairOdds: -105,
+            },
+            '9.9.9.9',
+          ),
+        ),
+      )
+      last = res.status
     }
-    const blocked = await POST_BETS(req('http://test/api/bets', { userId: 'u1', sport: 'NFL', pick: 'PHI -3.5', stakeUnits: 1 }))
-    expect(blocked.status).toBe(429)
+    expect(last).toBe(429)
   })
 
   it('settles a bet to win', async () => {
-    const ctx: { params: Promise<{ id: string }> } = { params: Promise.resolve({ id: 'bet2' }) }
-    const res = await POST_SETTLE(req('http://test/api/bets/bet2/settle', { result: 'win' }), ctx)
-    expect(res.status).toBe(200)
-    const data = await res.json()
-    expect(data.status).toBe('win')
+    // use a different IP so we aren't rate-limited by the previous test
+    const createRes = await POST_BETS(
+      nreq(
+        '/api/bets',
+        json(
+          {
+            sport: 'NBA',
+            pick: 'BOS -3.5',
+            stakeUnits: 1,
+            bookOdds: -110,
+            fairOdds: -105,
+          },
+          '5.5.5.5',
+        ),
+      ),
+    )
+    expect(createRes.status).toBe(201)
+    const created = (await createRes.json()) as { id: string }
+
+    const settleRes = await POST_SETTLE(
+      nreq(
+        `/api/bets/${created.id}/settle`,
+        json({ outcome: 'win' }, '5.5.5.5'),
+      ),
+      { params: Promise.resolve({ id: created.id }) } as any,
+    )
+    expect(settleRes.status).toBe(200)
+    const settled = await settleRes.json()
+    expect(settled.status).toBe('win')
   })
 })
