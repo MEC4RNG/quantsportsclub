@@ -107,17 +107,21 @@ export async function getExposureAnalytics(days?: number): Promise<ExposureAnaly
   // Pending by sport
   type PendingGroupRow = { sport: string; _sum: { stakeUnits: number | null } }
 
-  const pendingBySportRows = (await prisma.bet.groupBy({
+  const pendingBySportRows = await prisma.bet.groupBy({
     by: ['sport'],
     where: { status: 'pending', ...(dateFilter ? { createdAt: dateFilter } : {}) },
     _sum: { stakeUnits: true },
     orderBy: { sport: 'asc' },
-  })) as PendingGroupRow[]
+  })
 
-  const pendingBySport = pendingBySportRows.map((r) => ({
-    sport: r.sport,
-    pending: n(r._sum.stakeUnits),
-  }))
+  const pendingBySport = pendingBySportRows.map(
+    (r: PendingGroupRow) => ({
+      sport: r.sport,
+      pending: Number(r._sum.stakeUnits ?? 0),
+    })
+)
+
+
 
 
 
