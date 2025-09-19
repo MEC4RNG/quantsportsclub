@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { Prisma } from '@prisma/client'
+import type { Prisma } from '@prisma/client'
 import { logger } from '@/lib/log'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { requireApiKey } from '@/lib/authz'

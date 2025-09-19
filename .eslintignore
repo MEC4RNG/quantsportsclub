@@ -1,0 +1,13 @@
+node_modules
+.next
+dist
+coverage
+.vercel
+.vscode
+
+# Prisma outputs / non-TS scripts
+.prisma
+prisma/*.js
+
+# Build artifacts
+**/*.d.ts

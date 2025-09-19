@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint . --ext .ts,.tsx",
+    "lint": "next lint --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "db:generate": "prisma generate",
