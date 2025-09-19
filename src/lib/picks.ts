@@ -49,10 +49,6 @@ export async function getPendingBets(limit = 100): Promise<PendingBetRow[]> {
 }
 
 // Matches your schema: kind + units
-type BankrollEntryRow = {
-  kind: 'deposit' | 'withdrawal'
-  units: number | null
-}
 
 
 // --- Bankroll: deposits – withdrawals + realized PnL //
