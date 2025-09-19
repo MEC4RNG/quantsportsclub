@@ -3,9 +3,6 @@
 import { useMemo, useState } from 'react'
 import { americanToDecimal, impliedFromAmerican, kellyFraction } from '@/lib/odds'
 
-function label(n: number) {
-  return Number.isFinite(n) ? n.toFixed(2) : '—'
-}
 
 export default function Betslip({ initialBankroll }: { initialBankroll: number }) {
   const [sport, setSport] = useState('NBA')
