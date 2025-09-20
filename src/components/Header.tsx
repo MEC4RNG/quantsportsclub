@@ -2,36 +2,70 @@
 'use client'
 
 import Link from 'next/link'
-import { useSession, signIn, signOut } from 'next-auth/react'
+import styled from 'styled-components'
+
+const Bar = styled.header`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+`
+
+const Brand = styled.div`
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  a {
+    text-decoration: none;
+  }
+`
+
+const Nav = styled.nav`
+  display: flex;
+  gap: 12px;
+  a {
+    padding: 6px 10px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    text-decoration: none;
+  }
+  a:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+`
 
 export default function Header() {
-  const { data: session, status } = useSession()
+  // Only NEXT_PUBLIC_* is guaranteed on the client.
+  // We also check PUBLIC_MVP in case it was inlined during SSR.
+  const showMvpClient =
+    process.env.NEXT_PUBLIC_PUBLIC_MVP === 'true' ||
+    process.env.NEXT_PUBLIC_PUBLIC_MVP === '1' ||
+    process.env.NEXT_PUBLIC_PUBLIC_MVP === 'yes'
+
+  const showMvpServer = process.env.PUBLIC_MVP === 'true'
+
+  const showMvp = showMvpClient || showMvpServer
 
   return (
-    <header style={{
-      display:'flex', alignItems:'center', justifyContent:'space-between',
-      padding:'12px 16px', borderBottom:'1px solid rgba(255,255,255,0.12)'
-    }}>
-      <nav style={{display:'flex', gap:12}}>
-        <Link href="/">Home</Link>
+    <Bar>
+      <Brand>
+        <Link href="/">QuantSportsClub</Link>
+      </Brand>
+      <Nav>
+        {/* Always-on links */}
+        <Link href="/about">About</Link>
         <Link href="/dashboard">Dashboard</Link>
-        <Link href="/exposure">Exposure</Link>
-        <Link href="/betslip">Betslip</Link>
-      </nav>
-      <div style={{display:'flex', gap:12, alignItems:'center'}}>
-        {status === 'authenticated' ? (
+
+        {/* MVP section (feature-flagged) */}
+        {showMvp && (
           <>
-            <span style={{opacity:.8}}>
-              {session?.user?.name ?? session?.user?.email ?? 'Signed in'}
-            </span>
-            <button onClick={() => signOut({ callbackUrl: '/' })}>
-              Sign out
-            </button>
+            <Link href="/picks">Picks</Link>
+            <Link href="/stats">Stats</Link>
+            <Link href="/leaderboard">Leaderboard</Link>
           </>
-        ) : (
-          <button onClick={() => signIn('github')}>Sign in</button>
         )}
-      </div>
-    </header>
+      </Nav>
+    </Bar>
   )
 }

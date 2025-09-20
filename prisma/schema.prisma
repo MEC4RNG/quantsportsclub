@@ -115,6 +115,11 @@ model Bet {
   status        String   @default("pending")
   realizedUnits Float?
 
+    // who/what produced the pick (for rankings & filtering)
+  source  String?   @db.VarChar(32)  // "internal" | "guest" | "ai_model" | "partner" (free text for now)
+  tag     String?   @db.VarChar(80)  // handle or model name, e.g., "QuantSportsClub", "MyNBA_v2"
+
+
   @@index([userId, createdAt])
 }
 
