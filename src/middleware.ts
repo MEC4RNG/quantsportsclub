@@ -1,28 +1,28 @@
-import { withAuth } from 'next-auth/middleware'
-import { NextResponse } from 'next/server'
+// src/middleware.ts
+import { NextResponse, type NextRequest } from 'next/server'
 
-export default withAuth(
-  async function middleware(req) {
-    // Light request-id for tracing (Edge runtime-safe)
-    const reqId = crypto.randomUUID()
-    const res = NextResponse.next()
-    res.headers.set('x-request-id', reqId)
-    // (Optional) cheap console log in dev; avoid noisy logs in prod edge
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[MW]', reqId, req.method, req.nextUrl.pathname)
-    }
-    // inside default export withAuth(...) just before `return res`
-    res.headers.set('x-frame-options', 'SAMEORIGIN')
-    res.headers.set('x-content-type-options', 'nosniff')
-    res.headers.set('referrer-policy', 'strict-origin-when-cross-origin')
-    res.headers.set('permissions-policy', 'camera=(), microphone=(), geolocation=()')
-    res.headers.set('strict-transport-security', 'max-age=63072000; includeSubDomains; preload')
-    return res
-  },
-  {
-    pages: { signIn: '/auth/signin' },
-  },
-)
+export async function middleware(req: NextRequest) {
+  if (process.env.ENABLE_AUTH !== 'true') return NextResponse.next()
 
-export const config = { matcher: ['/dashboard/:path*'] }
+  const session = req.cookies.get('next-auth.session-token')
+    ?? req.cookies.get('__Secure-next-auth.session-token')
 
+  // If no session cookie and hitting app pages, bounce to sign-in
+  if (!session && req.nextUrl.pathname.startsWith('/dashboard') ||
+      !session && req.nextUrl.pathname.startsWith('/betslip') ||
+      !session && req.nextUrl.pathname.startsWith('/exposure')) {
+    const url = req.nextUrl.clone()
+    url.pathname = '/api/auth/signin'
+    url.searchParams.set('callbackUrl', req.nextUrl.pathname)
+    return NextResponse.redirect(url)
+  }
+  return NextResponse.next()
+}
+
+export const config = {
+  matcher: [
+    '/dashboard/:path*',
+    '/betslip/:path*',
+    '/exposure/:path*',
+  ],
+}

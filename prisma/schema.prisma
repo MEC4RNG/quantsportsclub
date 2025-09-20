@@ -11,11 +11,14 @@ datasource db {
 
 model User {
   id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  image     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // NextAuth standard fields
+  name           String?
+  email          String?          @unique
+  emailVerified  DateTime?        // <-- REQUIRED by NextAuth Prisma adapter
+  image          String?
 
   accounts  Account[]
   sessions  Session[]
