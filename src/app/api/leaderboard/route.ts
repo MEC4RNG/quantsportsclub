@@ -34,7 +34,7 @@ export async function GET() {
     })
 
     return NextResponse.json(leaderboard)
-  } catch (err) {
-    return NextResponse.json({ error: 'failed_to_load_leaderboard' }, { status: 500 })
+  } catch (_err) {
+    return NextResponse.json({ error: 'Internal Error' }, { status: 500 })
   }
 }
