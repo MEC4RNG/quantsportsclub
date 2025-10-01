@@ -1,18 +1,16 @@
 // src/lib/authz.ts
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
-/**
- * If API_KEY is set in env, enforce it via `x-api-key` header.
- * Usage in a route:
- *   const guard = requireApiKey(req)
- *   if (guard) return guard // 401
- */
-export function requireApiKey(req: Request) {
-  const required = process.env.API_KEY
-  if (!required) return null
-  const provided = req.headers.get('x-api-key') ?? ''
+export async function requireApiKey(req: NextRequest): Promise<{ ok: true } | { ok: false; res: NextResponse }> {
+  const required = process.env.API_KEY?.trim()
+  if (!required) return { ok: true } // gate disabled if no key configured
+
+  const provided = req.headers.get('x-api-key')?.trim()
   if (provided !== required) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return {
+      ok: false,
+      res: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+    }
   }
-  return null
+  return { ok: true }
 }
