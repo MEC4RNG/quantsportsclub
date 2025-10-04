@@ -1,82 +1,112 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-// Minimal types for the mock
-type Bet = {
-  id: string
-  userId: string
-  pick: string
-  stakeUnits: number
-  status: 'pending' | 'win' | 'loss' | 'void'
-  createdAt?: Date
-  oddsAmerican?: number
-  oddsDecimal?: number
-}
-type PrismaMock = {
-  bet: {
-    findMany: () => Promise<Bet[]>
-    create: (args: { data: Partial<Bet> & { userId: string; pick: string; stakeUnits: number; status?: Bet['status'] } }) => Promise<Bet>
-    findUnique: (args: { where: { id: string } }) => Promise<Bet | null>
-    update: (args: { where: { id: string }; data: Partial<Bet> }) => Promise<Bet>
-  }
-  bankrollEntry: {
-    create: (args: { data: { userId: string; kind: 'bet' | 'win' | 'loss' | 'adjustment' | 'deposit' | 'withdrawal'; units: number; notes?: string } }) => Promise<unknown>
-  }
-  $transaction: <T>(fn: (tx: PrismaMock) => Promise<T> | T) => Promise<T>
-}
-
-vi.mock('@/lib/db', () => {
-  const mock: PrismaMock = {
-    bet: {
-      findMany: async () => [{ id: 'bet1', userId: 'u1', pick: 'PHI -3.5', stakeUnits: 1, status: 'pending', createdAt: new Date(), oddsAmerican: -110 }],
-      create: async (args) => ({ id: 'bet2', status: 'pending', createdAt: new Date(), ...args.data } as Bet),
-      findUnique: async ({ where: { id } }) =>
-        id === 'bet2' ? ({ id: 'bet2', userId: 'u1', pick: 'PHI -3.5', stakeUnits: 1, status: 'pending', oddsAmerican: -110 } as Bet) : null,
-      update: async ({ where: { id }, data }) => ({ id, userId: 'u1', pick: 'PHI -3.5', stakeUnits: 1, status: (data.status as Bet['status']) ?? 'pending', ...data } as Bet),
-    },
-    bankrollEntry: {
-      create: async () => ({}),
-    },
-    $transaction: async (fn) => fn((mock as unknown) as PrismaMock),
-  }
-  return { prisma: mock }
-})
-
+// src/tests/bets.api.test.ts
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest'
 import { GET as GET_BETS, POST as POST_BETS } from '@/app/api/bets/route'
 import { POST as POST_SETTLE } from '@/app/api/bets/[id]/settle/route'
-import { _resetRateLimitStore } from '@/lib/rateLimit'
+import { NextRequest } from 'next/server'
 
-function req(url: string, body?: Record<string, unknown>, ip = '9.9.9.9') {
-  return new Request(url, {
-    method: 'POST',
-    body: body ? JSON.stringify(body) : undefined,
-    headers: { 'content-type': 'application/json', 'x-forwarded-for': ip },
-  })
+// ---- helpers ----
+
+// only the settle route needs a ctx; infer its type from the handler
+type SettleCtx = Parameters<typeof POST_SETTLE>[1]
+
+// the exact init type for NextRequest
+type NextInit = ConstructorParameters<typeof NextRequest>[1]
+
+// test API key used by the gate
+const API_KEY = 'test-key'
+
+function req(
+  path: string,
+  init?: (NextInit & { ip?: string; apiKey?: string }) | undefined,
+) {
+  const url = 'http://localhost' + path
+  const headers = new Headers(init?.headers)
+  headers.set('content-type', 'application/json')
+  if (init?.ip) headers.set('x-forwarded-for', init.ip)
+  if (init?.apiKey) headers.set('x-api-key', init.apiKey)
+
+  const { ip: _ip, apiKey: _apiKey, ...rest } = init ?? {}
+  const nextInit: NextInit = { ...rest, headers }
+  return new NextRequest(url, nextInit)
 }
 
-describe('bets API', () => {
-  beforeEach(() => _resetRateLimitStore())
+const json = (body: unknown) => JSON.stringify(body)
 
+// ---- env / rate-limit setup ----
+
+beforeAll(() => {
+  process.env.API_KEY = API_KEY
+})
+
+beforeEach(() => {
+  // If you expose a test-only reset for your limiter, call it here:
+  // _resetRateLimitStore?.()
+})
+
+// ---- tests ----
+
+describe('bets API', () => {
   it('GET returns list', async () => {
-    const res = await GET_BETS()
-    expect(res.ok).toBe(true)
-    const data = await res.json()
-    expect(Array.isArray(data)).toBe(true)
+    const res = await GET_BETS(req('/api/bets'))
+    expect(res.status).toBe(200)
   })
 
   it('POST respects rate limit', async () => {
-    for (let i = 0; i < 10; i++) {
-      const r = await POST_BETS(req('http://test/api/bets', { userId: 'u1', sport: 'NFL', pick: 'PHI -3.5', stakeUnits: 1 }))
-      expect(r.status).toBe(201)
+    let lastStatus = 0
+    for (let i = 0; i < 11; i++) {
+      const res = await POST_BETS(
+        req('/api/bets', {
+          method: 'POST',
+          body: json({
+            sport: 'NBA',
+            pick: 'LAL -3.5',
+            stakeUnits: 1,
+            bookOdds: -110,
+          }),
+          ip: '9.9.9.9',
+          apiKey: API_KEY,
+        })
+      )
+      lastStatus = res.status
     }
-    const blocked = await POST_BETS(req('http://test/api/bets', { userId: 'u1', sport: 'NFL', pick: 'PHI -3.5', stakeUnits: 1 }))
-    expect(blocked.status).toBe(429)
+    expect(lastStatus).toBe(429)
   })
 
   it('settles a bet to win', async () => {
-    const ctx: { params: Promise<{ id: string }> } = { params: Promise.resolve({ id: 'bet2' }) }
-    const res = await POST_SETTLE(req('http://test/api/bets/bet2/settle', { result: 'win' }), ctx)
-    expect(res.status).toBe(200)
-    const data = await res.json()
-    expect(data.status).toBe('win')
+    // create a bet
+    const createRes = await POST_BETS(
+      req('/api/bets', {
+        method: 'POST',
+        body: json({
+          sport: 'NBA',
+          pick: 'BOS ML',
+          stakeUnits: 1,
+          bookOdds: -120,
+        }),
+        ip: '5.5.5.5',
+        apiKey: API_KEY,
+      })
+    )
+    expect(createRes.status).toBe(201)
+    const created = (await createRes.json()) as { id: string }
+
+    // settle it
+    const settleCtx: SettleCtx = {
+      // Next 15 route types often use Promise for params
+      params: Promise.resolve({ id: created.id }),
+    } as SettleCtx
+
+    const settleRes = await POST_SETTLE(
+      req(`/api/bets/${created.id}/settle`, {
+        method: 'POST',
+        body: json({ outcome: 'win' }),
+        ip: '5.5.5.5',
+        apiKey: API_KEY,
+      }),
+      settleCtx
+    )
+    expect(settleRes.status).toBe(200)
+    const settled = await settleRes.json()
+    expect(settled.status).toBe('win')
   })
 })

@@ -11,11 +11,14 @@ datasource db {
 
 model User {
   id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  image     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // NextAuth standard fields
+  name           String?
+  email          String?          @unique
+  emailVerified  DateTime?        // <-- REQUIRED by NextAuth Prisma adapter
+  image          String?
 
   accounts  Account[]
   sessions  Session[]
@@ -90,6 +93,10 @@ model Bet {
   id            String   @id @default(cuid())
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  // --- Sizing inputs (optional)
+  bookOdds   Int?
+  fairOdds   Int?
+  edgePct    Decimal? @db.Decimal(8,4) // store % as e.g. 3.25 => 3.2500
 
   // Relation to User (this is what was missing)
   userId        String
@@ -107,6 +114,11 @@ model Bet {
   notes         String?
   status        String   @default("pending")
   realizedUnits Float?
+
+    // who/what produced the pick (for rankings & filtering)
+  source  String?   @db.VarChar(32)  // "internal" | "guest" | "ai_model" | "partner" (free text for now)
+  tag     String?   @db.VarChar(80)  // handle or model name, e.g., "QuantSportsClub", "MyNBA_v2"
+
 
   @@index([userId, createdAt])
 }
