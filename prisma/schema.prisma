@@ -135,4 +135,74 @@ model BankrollEntry {
   user User @relation(fields: [userId], references: [id])
 }
 
+/// A narrow, presentation-only result exported by the private NFL GSIM service.
+/// No model parameters, artifacts, training data, trials, credentials, or raw run data belong here.
+model NflGsimResult {
+  id                    String   @id @default(cuid())
+  schemaVersion         String
+  payloadHash           String   @unique @db.Char(64)
+  generatedAt           DateTime
+  season                Int
+  week                  Int
+  trialsPerGame         Int
+  masterSeed            Int
+  marketIndependent     Boolean
+  scheduledGames        Int
+  simulatedGames        Int
+  snapshotStatus        String
+  weatherStatus         String
+  injuryFeedAvailable   Boolean
+  refreshArtifactHash   String
+  visibility            String
+  decisionUse           String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  games        NflGsimGame[]
+  blockedGames NflGsimBlockedGame[]
+
+  @@index([season, week, generatedAt])
+}
+
+model NflGsimGame {
+  id                       String  @id @default(cuid())
+  resultId                 String
+  gameId                   String
+  scheduledStartDate       DateTime @db.Date
+  awayTeam                 String
+  homeTeam                 String
+  awayWinProbability       Float
+  homeWinProbability       Float
+  tieProbability           Float
+  projectedAwayScore       Float
+  projectedHomeScore       Float
+  projectedMarginHome      Float
+  projectedTotalRaw        Float
+  projectedTotalCalibrated Float
+  totalP10                 Float
+  totalP50                 Float
+  totalP90                 Float
+  validTrials              Int
+  invalidTrials            Int
+  provisional              Boolean
+  modelRelease             String
+  runtimeArtifactHash      String
+
+  result NflGsimResult @relation(fields: [resultId], references: [id], onDelete: Cascade)
+
+  @@unique([resultId, gameId])
+  @@index([scheduledStartDate])
+}
+
+model NflGsimBlockedGame {
+  id           String @id @default(cuid())
+  resultId     String
+  sourceGameId String
+  failure      String
+
+  result NflGsimResult @relation(fields: [resultId], references: [id], onDelete: Cascade)
+
+  @@unique([resultId, sourceGameId])
+}
+
 
