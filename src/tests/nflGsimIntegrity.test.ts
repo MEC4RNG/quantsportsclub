@@ -14,12 +14,12 @@ describe('NFL GSIM payload hashing', () => {
       readiness: { snapshot_status: 'PROVISIONAL', weather_status: 'NOT_READY', injury_feed_available: false, refresh_artifact_hash: 'b'.repeat(64) },
       blocked_games: [],
       games: [],
-      publication: { visibility: 'PRIVATE_QSC', decision_use: 'PRESENTATION_SAMPLE_NOT_FINAL_GAME_DAY', model_parameters_included: false },
+      publication: { visibility: 'PRIVATE_QSC', decision_use: 'PRODUCTION_PROVISIONAL_NOT_FINAL_GAME_DAY', model_parameters_included: false },
       payload_hash: '0'.repeat(64),
     } satisfies NflGsimResults
 
     expect(calculateNflGsimPayloadHash(payload)).toBe(
-      '40fadbe0568a461ae365ae1c64eda9c44848759825b3704e4f2cde65338034b2',
+      'abb223f32d73f2bebf2282b7bfd80cba36eb9e651b1206e02ae0f93f974650bb',
     )
   })
 })
