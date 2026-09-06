@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
+import { nflResultsDescription } from '@/lib/nflGsimPresentation'
 
 const cellStyle = { padding: '10px 8px', borderBottom: '1px solid rgba(255,255,255,.1)' }
 
@@ -49,11 +50,8 @@ export default async function NflResultsPage() {
             </p>
             <p style={{ color: '#f6c85f' }}>
               These are{' '}
-              {result.decisionUse === 'PRODUCTION_READY_NOT_FINAL_GAME_DAY'
-                ? 'production model results'
-                : 'provisional production model results'}
-              , not picks or final game-day recommendations. Readiness and provisional labels must
-              be considered before use.
+              {nflResultsDescription(result.decisionUse)}, not picks or final game-day
+              recommendations. Readiness and provisional labels must be considered before use.
             </p>
             <p style={{ marginBottom: 0, opacity: 0.8 }}>
               Snapshot: {result.snapshotStatus} · Weather: {result.weatherStatus} · Injury feed:{' '}
