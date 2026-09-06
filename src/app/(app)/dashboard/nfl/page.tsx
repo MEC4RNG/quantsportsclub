@@ -48,8 +48,8 @@ export default async function NflResultsPage() {
               <strong>Decision use:</strong> {result.decisionUse}
             </p>
             <p style={{ color: '#f6c85f' }}>
-              These are model presentation results, not picks or final game-day recommendations.
-              Readiness and provisional labels must be considered before use.
+              These are provisional production model results, not picks or final game-day
+              recommendations. Readiness and provisional labels must be considered before use.
             </p>
             <p style={{ marginBottom: 0, opacity: 0.8 }}>
               Snapshot: {result.snapshotStatus} · Weather: {result.weatherStatus} · Injury feed:{' '}
