@@ -2,6 +2,10 @@ import { z } from 'zod'
 
 const probability = z.number().finite().min(0).max(1)
 const nonEmpty = z.string().min(1)
+export const nflDecisionUseSchema = z.enum([
+  'PRODUCTION_PROVISIONAL_NOT_FINAL_GAME_DAY',
+  'PRODUCTION_READY_NOT_FINAL_GAME_DAY',
+])
 
 const gameSchema = z
   .object({
@@ -58,7 +62,7 @@ export const nflGsimResultsSchema = z
     publication: z
       .object({
         visibility: z.literal('PRIVATE_QSC'),
-        decision_use: nonEmpty,
+        decision_use: nflDecisionUseSchema,
         model_parameters_included: z.literal(false),
       })
       .strict(),

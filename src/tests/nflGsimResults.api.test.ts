@@ -63,7 +63,7 @@ function payload(): NflGsimResults {
     ],
     publication: {
       visibility: 'PRIVATE_QSC',
-      decision_use: 'PRESENTATION_SAMPLE_NOT_FINAL_GAME_DAY',
+      decision_use: 'PRODUCTION_PROVISIONAL_NOT_FINAL_GAME_DAY',
       model_parameters_included: false,
     },
     payload_hash: '0'.repeat(64),
@@ -109,6 +109,14 @@ describe('NFL GSIM results ingestion', () => {
   it('rejects unknown private-model fields', async () => {
     const unsafe = { ...payload(), private_model_parameters: { coefficient: 1.0 } }
     const response = await POST(request(unsafe))
+    expect(response.status).toBe(422)
+    expect(upsert).not.toHaveBeenCalled()
+  })
+
+  it('rejects an unknown decision-use classification before persistence', async () => {
+    const unknown = payload() as unknown as { publication: { decision_use: string } }
+    unknown.publication.decision_use = 'UNKNOWN'
+    const response = await POST(request(unknown))
     expect(response.status).toBe(422)
     expect(upsert).not.toHaveBeenCalled()
   })
