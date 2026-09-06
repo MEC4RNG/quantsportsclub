@@ -121,6 +121,27 @@ describe('NFL GSIM results ingestion', () => {
     expect(upsert).not.toHaveBeenCalled()
   })
 
+  it('rejects a ready classification with provisional inputs before persistence', async () => {
+    const inconsistent = payload()
+    inconsistent.publication.decision_use = 'PRODUCTION_READY_NOT_FINAL_GAME_DAY'
+    inconsistent.payload_hash = calculateNflGsimPayloadHash(inconsistent)
+    const response = await POST(request(inconsistent))
+    expect(response.status).toBe(422)
+    expect(upsert).not.toHaveBeenCalled()
+  })
+
+  it('accepts a ready classification only with fully ready inputs', async () => {
+    const ready = payload()
+    ready.publication.decision_use = 'PRODUCTION_READY_NOT_FINAL_GAME_DAY'
+    ready.games[0]!.provisional = false
+    ready.readiness.injury_feed_available = true
+    ready.readiness.weather_status = 'CURRENT_WEATHER_FORECAST_READY'
+    ready.payload_hash = calculateNflGsimPayloadHash(ready)
+    const response = await POST(request(ready))
+    expect(response.status).toBe(200)
+    expect(upsert).toHaveBeenCalledTimes(1)
+  })
+
   it('rejects a payload whose content does not match its hash', async () => {
     const altered = payload()
     altered.games[0]!.home_win_probability = 0.7

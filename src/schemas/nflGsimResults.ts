@@ -6,6 +6,11 @@ export const nflDecisionUseSchema = z.enum([
   'PRODUCTION_PROVISIONAL_NOT_FINAL_GAME_DAY',
   'PRODUCTION_READY_NOT_FINAL_GAME_DAY',
 ])
+const readyWeatherStatuses = new Set([
+  'CURRENT_WEATHER_FORECAST_READY',
+  'VALIDATED_ZERO_EFFECT',
+  'VERSIONED_POINT_IN_TIME_WEATHER_INPUT',
+])
 
 const gameSchema = z
   .object({
@@ -69,5 +74,21 @@ export const nflGsimResultsSchema = z
     payload_hash: z.string().regex(/^[0-9a-f]{64}$/),
   })
   .strict()
+  .superRefine((payload, context) => {
+    if (payload.publication.decision_use !== 'PRODUCTION_READY_NOT_FINAL_GAME_DAY') return
+
+    const everyGameReady = payload.games.every((game) => !game.provisional)
+    const readyInputs =
+      everyGameReady &&
+      payload.readiness.injury_feed_available &&
+      readyWeatherStatuses.has(payload.readiness.weather_status)
+    if (!readyInputs) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['publication', 'decision_use'],
+        message: 'ready decision-use classification is inconsistent with payload readiness',
+      })
+    }
+  })
 
 export type NflGsimResults = z.infer<typeof nflGsimResultsSchema>
