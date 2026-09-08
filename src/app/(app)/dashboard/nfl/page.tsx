@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { prisma } from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { authOptions } from '@/lib/auth'
 import { nflResultsDescription } from '@/lib/nflGsimPresentation'
 
@@ -80,9 +81,14 @@ export default async function NflResultsPage() {
               {result.injuryFeedAvailable ? 'available' : 'unavailable'} · Generated:{' '}
               {result.generatedAt.toLocaleString()}
             </p>
+            <nav style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 16 }} aria-label="NFL result sections">
+              <a href="#games" style={{ color: '#8fc7ff' }}>Games</a>
+              <a href="#model-lines" style={{ color: '#8fc7ff' }}>Model lines</a>
+              <a href="#player-projections" style={{ color: '#8fc7ff' }}>Player projections</a>
+            </nav>
           </section>
 
-          <div style={{ overflowX: 'auto' }}>
+          <div id="games" style={{ overflowX: 'auto', scrollMarginTop: 16 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
@@ -98,7 +104,14 @@ export default async function NflResultsPage() {
               <tbody>
                 {result.games.map((game) => (
                   <tr key={game.id}>
-                    <td style={cellStyle}>{game.awayTeam} at {game.homeTeam}</td>
+                    <td style={cellStyle}>
+                      <Link
+                        href={`/dashboard/nfl/${encodeURIComponent(game.gameId)}`}
+                        style={{ color: '#8fc7ff', fontWeight: 700, textDecoration: 'none' }}
+                      >
+                        {game.awayTeam} at {game.homeTeam} →
+                      </Link>
+                    </td>
                     <td style={cellStyle} align="right">{pct(game.awayWinProbability)}</td>
                     <td style={cellStyle} align="right">{pct(game.homeWinProbability)}</td>
                     <td style={cellStyle} align="right">{pct(game.tieProbability)}</td>
@@ -116,7 +129,7 @@ export default async function NflResultsPage() {
           </div>
 
           {result.games.some((game) => game.totalLines.length || game.spreadLines.length) && (
-            <section style={{ marginTop: 32 }}>
+            <section id="model-lines" style={{ marginTop: 32, scrollMarginTop: 16 }}>
               <h2>Model line probabilities</h2>
               <p style={{ opacity: 0.8 }}>
                 Model-only thresholds calculated after simulation. These are not sportsbook
@@ -125,7 +138,7 @@ export default async function NflResultsPage() {
               {result.games.map((game) => (
                 <details key={`lines-${game.id}`} style={{ marginBottom: 12 }}>
                   <summary style={{ cursor: 'pointer', fontWeight: 700 }}>
-                    {game.awayTeam} at {game.homeTeam}
+                    {game.awayTeam} at {game.homeTeam} · {game.totalLines.length + game.spreadLines.length} lines
                   </summary>
                   <div style={{ overflowX: 'auto', marginTop: 8 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -154,11 +167,14 @@ export default async function NflResultsPage() {
           )}
 
           {result.playerProjections.length > 0 && (
-            <section style={{ marginTop: 32 }}>
+            <section id="player-projections" style={{ marginTop: 32, scrollMarginTop: 16 }}>
               <h2>Player projections</h2>
               <p style={{ opacity: 0.8 }}>
                 Reconciled player outcomes from the same trials as the game projections.
                 Thresholds are model-only and are not live book lines.
+              </p>
+              <p style={{ opacity: 0.8 }}>
+                {result.playerProjections.length} players. Select a game above for a focused matchup view.
               </p>
               {result.playerProjections.map((player) => (
                 <details key={player.id} style={{ marginBottom: 12 }}>
