@@ -12,6 +12,47 @@ const readyWeatherStatuses = new Set([
   'VERSIONED_POINT_IN_TIME_WEATHER_INPUT',
 ])
 
+const totalLineSchema = z.object({
+  threshold: z.number().finite(),
+  over_probability: probability,
+  under_probability: probability,
+  push_probability: probability,
+}).strict()
+
+const spreadLineSchema = z.object({
+  home_handicap: z.number().finite(),
+  home_cover_probability: probability,
+  away_cover_probability: probability,
+  push_probability: probability,
+}).strict()
+
+const playerStatisticSchema = z.enum([
+  'passing_yards', 'rushing_yards', 'receiving_yards', 'receptions', 'total_touchdowns',
+])
+
+const playerProjectionSchema = z.object({
+  game_id: nonEmpty,
+  player_id: nonEmpty,
+  player_name: nonEmpty,
+  team: nonEmpty,
+  position: z.enum(['QB', 'RB', 'WR', 'TE']),
+  trial_count: z.number().int().min(1),
+  means: z.object({
+    passing_yards: z.number().finite(),
+    rushing_yards: z.number().finite(),
+    receiving_yards: z.number().finite(),
+    receptions: z.number().finite(),
+    total_touchdowns: z.number().finite(),
+  }).strict(),
+  thresholds: z.array(z.object({
+    statistic: playerStatisticSchema,
+    threshold: z.number().finite(),
+    over_probability: probability,
+    under_probability: probability,
+    push_probability: probability,
+  }).strict()),
+}).strict()
+
 const gameSchema = z
   .object({
     game_id: nonEmpty,
@@ -34,6 +75,8 @@ const gameSchema = z
     provisional: z.boolean(),
     model_release: nonEmpty,
     runtime_artifact_hash: nonEmpty,
+    model_total_lines: z.array(totalLineSchema).optional(),
+    model_spread_lines: z.array(spreadLineSchema).optional(),
   })
   .strict()
 
@@ -64,6 +107,7 @@ export const nflGsimResultsSchema = z
     blocked_games: z
       .array(z.object({ source_game_id: nonEmpty, failure: nonEmpty }).strict()),
     games: z.array(gameSchema),
+    player_projections: z.array(playerProjectionSchema).optional(),
     publication: z
       .object({
         visibility: z.literal('PRIVATE_QSC'),

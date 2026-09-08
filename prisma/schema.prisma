@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
   // shadowDatabaseUrl = env("SHADOW_DATABASE_URL") // optional during migrate dev
 }
@@ -15,15 +15,15 @@ model User {
   updatedAt DateTime @updatedAt
 
   // NextAuth standard fields
-  name           String?
-  email          String?          @unique
-  emailVerified  DateTime?        // <-- REQUIRED by NextAuth Prisma adapter
-  image          String?
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime? // <-- REQUIRED by NextAuth Prisma adapter
+  image         String?
 
-  accounts  Account[]
-  sessions  Session[]
-  bets      Bet[]
-  bankroll  BankrollEntry[]
+  accounts Account[]
+  sessions Session[]
+  bets     Bet[]
+  bankroll BankrollEntry[]
 }
 
 model Account {
@@ -32,12 +32,12 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String?  @db.Text
-  access_token      String?  @db.Text
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String?  @db.Text
+  id_token          String? @db.Text
   session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -69,7 +69,7 @@ model ModelRun {
   notes     String?
   createdAt DateTime @default(now())
 
-  edges     Edge[]
+  edges Edge[]
 }
 
 model Edge {
@@ -90,17 +90,17 @@ model Edge {
 }
 
 model Bet {
-  id            String   @id @default(cuid())
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   // --- Sizing inputs (optional)
-  bookOdds   Int?
-  fairOdds   Int?
-  edgePct    Decimal? @db.Decimal(8,4) // store % as e.g. 3.25 => 3.2500
+  bookOdds  Int?
+  fairOdds  Int?
+  edgePct   Decimal? @db.Decimal(8, 4) // store % as e.g. 3.25 => 3.2500
 
   // Relation to User (this is what was missing)
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Your bet fields
   sport         String
@@ -112,17 +112,15 @@ model Bet {
   oddsAmerican  Int?
   oddsDecimal   Float?
   notes         String?
-  status        String   @default("pending")
+  status        String  @default("pending")
   realizedUnits Float?
 
-    // who/what produced the pick (for rankings & filtering)
-  source  String?   @db.VarChar(32)  // "internal" | "guest" | "ai_model" | "partner" (free text for now)
-  tag     String?   @db.VarChar(80)  // handle or model name, e.g., "QuantSportsClub", "MyNBA_v2"
-
+  // who/what produced the pick (for rankings & filtering)
+  source String? @db.VarChar(32) // "internal" | "guest" | "ai_model" | "partner" (free text for now)
+  tag    String? @db.VarChar(80) // handle or model name, e.g., "QuantSportsClub", "MyNBA_v2"
 
   @@index([userId, createdAt])
 }
-
 
 model BankrollEntry {
   id        String   @id @default(cuid())
@@ -138,34 +136,35 @@ model BankrollEntry {
 /// A narrow, presentation-only result exported by the private NFL GSIM service.
 /// No model parameters, artifacts, training data, trials, credentials, or raw run data belong here.
 model NflGsimResult {
-  id                    String   @id @default(cuid())
-  schemaVersion         String
-  payloadHash           String   @unique @db.Char(64)
-  generatedAt           DateTime
-  season                Int
-  week                  Int
-  trialsPerGame         Int
-  masterSeed            Int
-  marketIndependent     Boolean
-  scheduledGames        Int
-  simulatedGames        Int
-  snapshotStatus        String
-  weatherStatus         String
-  injuryFeedAvailable   Boolean
-  refreshArtifactHash   String
-  visibility            String
-  decisionUse           String
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  schemaVersion       String
+  payloadHash         String   @unique @db.Char(64)
+  generatedAt         DateTime
+  season              Int
+  week                Int
+  trialsPerGame       Int
+  masterSeed          Int
+  marketIndependent   Boolean
+  scheduledGames      Int
+  simulatedGames      Int
+  snapshotStatus      String
+  weatherStatus       String
+  injuryFeedAvailable Boolean
+  refreshArtifactHash String
+  visibility          String
+  decisionUse         String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  games        NflGsimGame[]
-  blockedGames NflGsimBlockedGame[]
+  games             NflGsimGame[]
+  blockedGames      NflGsimBlockedGame[]
+  playerProjections NflGsimPlayerProjection[]
 
   @@index([season, week, generatedAt])
 }
 
 model NflGsimGame {
-  id                       String  @id @default(cuid())
+  id                       String   @id @default(cuid())
   resultId                 String
   gameId                   String
   scheduledStartDate       DateTime @db.Date
@@ -188,10 +187,70 @@ model NflGsimGame {
   modelRelease             String
   runtimeArtifactHash      String
 
-  result NflGsimResult @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  result      NflGsimResult       @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  totalLines  NflGsimTotalLine[]
+  spreadLines NflGsimSpreadLine[]
 
   @@unique([resultId, gameId])
   @@index([scheduledStartDate])
+}
+
+model NflGsimTotalLine {
+  id               String      @id @default(cuid())
+  gameId           String
+  threshold        Float
+  overProbability  Float
+  underProbability Float
+  pushProbability  Float
+  game             NflGsimGame @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, threshold])
+}
+
+model NflGsimSpreadLine {
+  id                   String      @id @default(cuid())
+  gameId               String
+  homeHandicap         Float
+  homeCoverProbability Float
+  awayCoverProbability Float
+  pushProbability      Float
+  game                 NflGsimGame @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, homeHandicap])
+}
+
+model NflGsimPlayerProjection {
+  id              String                   @id @default(cuid())
+  resultId        String
+  sourceGameId    String
+  playerId        String
+  playerName      String
+  team            String
+  position        String
+  trialCount      Int
+  passingYards    Float
+  rushingYards    Float
+  receivingYards  Float
+  receptions      Float
+  totalTouchdowns Float
+  result          NflGsimResult            @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  thresholds      NflGsimPlayerThreshold[]
+
+  @@unique([resultId, sourceGameId, playerId])
+  @@index([resultId, team, position])
+}
+
+model NflGsimPlayerThreshold {
+  id               String                  @id @default(cuid())
+  projectionId     String
+  statistic        String
+  threshold        Float
+  overProbability  Float
+  underProbability Float
+  pushProbability  Float
+  projection       NflGsimPlayerProjection @relation(fields: [projectionId], references: [id], onDelete: Cascade)
+
+  @@unique([projectionId, statistic, threshold])
 }
 
 model NflGsimBlockedGame {
@@ -204,5 +263,3 @@ model NflGsimBlockedGame {
 
   @@unique([resultId, sourceGameId])
 }
-
-

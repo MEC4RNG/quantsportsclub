@@ -162,4 +162,28 @@ describe('NFL GSIM results ingestion', () => {
     expect(upsert.mock.calls[1]![0].where).toEqual({ payloadHash: value.payload_hash })
     expect(upsert.mock.calls[0]![0].create).not.toHaveProperty('private_model_parameters')
   })
+
+  it('persists optional model-only game lines and player projections', async () => {
+    const value = payload()
+    value.games[0]!.model_total_lines = [
+      { threshold: 45.5, over_probability: 0.55, under_probability: 0.45, push_probability: 0 },
+    ]
+    value.games[0]!.model_spread_lines = [
+      { home_handicap: -3.5, home_cover_probability: 0.52, away_cover_probability: 0.48, push_probability: 0 },
+    ]
+    value.player_projections = [{
+      game_id: '2026_01_A_B', player_id: 'player-1', player_name: 'Test Player', team: 'A',
+      position: 'QB', trial_count: 100,
+      means: { passing_yards: 255, rushing_yards: 15, receiving_yards: 0, receptions: 0, total_touchdowns: 2 },
+      thresholds: [{ statistic: 'passing_yards', threshold: 249.5, over_probability: 0.54, under_probability: 0.46, push_probability: 0 }],
+    }]
+    value.payload_hash = calculateNflGsimPayloadHash(value)
+
+    const response = await POST(request(value))
+
+    expect(response.status).toBe(200)
+    const create = upsert.mock.calls[0]![0].create as Record<string, unknown>
+    expect(create).toHaveProperty('playerProjections.create.0.playerName', 'Test Player')
+    expect(create).toHaveProperty('games.create.0.totalLines.create.0.threshold', 45.5)
+  })
 })
