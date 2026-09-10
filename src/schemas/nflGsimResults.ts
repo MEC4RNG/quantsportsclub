@@ -12,46 +12,71 @@ const readyWeatherStatuses = new Set([
   'VERSIONED_POINT_IN_TIME_WEATHER_INPUT',
 ])
 
-const totalLineSchema = z.object({
-  threshold: z.number().finite(),
-  over_probability: probability,
-  under_probability: probability,
-  push_probability: probability,
-}).strict()
+const gameReadinessSchema = z
+  .object({
+    snapshot_status: nonEmpty,
+    weather_status: nonEmpty,
+    injury_feed_available: z.boolean(),
+    decision_use: nflDecisionUseSchema,
+  })
+  .strict()
 
-const spreadLineSchema = z.object({
-  home_handicap: z.number().finite(),
-  home_cover_probability: probability,
-  away_cover_probability: probability,
-  push_probability: probability,
-}).strict()
-
-const playerStatisticSchema = z.enum([
-  'passing_yards', 'rushing_yards', 'receiving_yards', 'receptions', 'total_touchdowns',
-])
-
-const playerProjectionSchema = z.object({
-  game_id: nonEmpty,
-  player_id: nonEmpty,
-  player_name: nonEmpty,
-  team: nonEmpty,
-  position: z.enum(['QB', 'RB', 'WR', 'TE']),
-  trial_count: z.number().int().min(1),
-  means: z.object({
-    passing_yards: z.number().finite(),
-    rushing_yards: z.number().finite(),
-    receiving_yards: z.number().finite(),
-    receptions: z.number().finite(),
-    total_touchdowns: z.number().finite(),
-  }).strict(),
-  thresholds: z.array(z.object({
-    statistic: playerStatisticSchema,
+const totalLineSchema = z
+  .object({
     threshold: z.number().finite(),
     over_probability: probability,
     under_probability: probability,
     push_probability: probability,
-  }).strict()),
-}).strict()
+  })
+  .strict()
+
+const spreadLineSchema = z
+  .object({
+    home_handicap: z.number().finite(),
+    home_cover_probability: probability,
+    away_cover_probability: probability,
+    push_probability: probability,
+  })
+  .strict()
+
+const playerStatisticSchema = z.enum([
+  'passing_yards',
+  'rushing_yards',
+  'receiving_yards',
+  'receptions',
+  'total_touchdowns',
+])
+
+const playerProjectionSchema = z
+  .object({
+    game_id: nonEmpty,
+    player_id: nonEmpty,
+    player_name: nonEmpty,
+    team: nonEmpty,
+    position: z.enum(['QB', 'RB', 'WR', 'TE']),
+    trial_count: z.number().int().min(1),
+    means: z
+      .object({
+        passing_yards: z.number().finite(),
+        rushing_yards: z.number().finite(),
+        receiving_yards: z.number().finite(),
+        receptions: z.number().finite(),
+        total_touchdowns: z.number().finite(),
+      })
+      .strict(),
+    thresholds: z.array(
+      z
+        .object({
+          statistic: playerStatisticSchema,
+          threshold: z.number().finite(),
+          over_probability: probability,
+          under_probability: probability,
+          push_probability: probability,
+        })
+        .strict(),
+    ),
+  })
+  .strict()
 
 const gameSchema = z
   .object({
@@ -77,6 +102,7 @@ const gameSchema = z
     runtime_artifact_hash: nonEmpty,
     model_total_lines: z.array(totalLineSchema).optional(),
     model_spread_lines: z.array(spreadLineSchema).optional(),
+    readiness: gameReadinessSchema.optional(),
   })
   .strict()
 
@@ -104,8 +130,7 @@ export const nflGsimResultsSchema = z
         refresh_artifact_hash: nonEmpty,
       })
       .strict(),
-    blocked_games: z
-      .array(z.object({ source_game_id: nonEmpty, failure: nonEmpty }).strict()),
+    blocked_games: z.array(z.object({ source_game_id: nonEmpty, failure: nonEmpty }).strict()),
     games: z.array(gameSchema),
     player_projections: z.array(playerProjectionSchema).optional(),
     publication: z
@@ -119,9 +144,59 @@ export const nflGsimResultsSchema = z
   })
   .strict()
   .superRefine((payload, context) => {
+    const gameIds = payload.games.map((game) => game.game_id)
+    if (new Set(gameIds).size !== gameIds.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['games'],
+        message: 'game IDs must be unique within a payload',
+      })
+    }
+    if (
+      payload.run.simulated_games !== payload.games.length ||
+      payload.run.scheduled_games < payload.run.simulated_games
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['run'],
+        message: 'run counts must match the payload update scope',
+      })
+    }
+    const gameIdSet = new Set(gameIds)
+    if ((payload.player_projections ?? []).some((player) => !gameIdSet.has(player.game_id))) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['player_projections'],
+        message: 'player projections must belong to a game in the payload update scope',
+      })
+    }
+
+    for (const [index, game] of payload.games.entries()) {
+      if (!game.readiness || game.readiness.decision_use !== 'PRODUCTION_READY_NOT_FINAL_GAME_DAY')
+        continue
+      if (
+        game.provisional ||
+        !game.readiness.injury_feed_available ||
+        !readyWeatherStatuses.has(game.readiness.weather_status)
+      ) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['games', index, 'readiness'],
+          message: 'ready game classification is inconsistent with game readiness',
+        })
+      }
+    }
+
     if (payload.publication.decision_use !== 'PRODUCTION_READY_NOT_FINAL_GAME_DAY') return
 
-    const everyGameReady = payload.games.every((game) => !game.provisional)
+    const everyGameReady =
+      payload.games.length > 0 &&
+      payload.games.every(
+        (game) =>
+          !game.provisional &&
+          (!game.readiness ||
+            game.readiness.decision_use === 'PRODUCTION_READY_NOT_FINAL_GAME_DAY'),
+      )
     const readyInputs =
       everyGameReady &&
       payload.readiness.injury_feed_available &&

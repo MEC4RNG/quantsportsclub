@@ -186,12 +186,17 @@ model NflGsimGame {
   provisional              Boolean
   modelRelease             String
   runtimeArtifactHash      String
+  snapshotStatus           String?
+  weatherStatus            String?
+  injuryFeedAvailable      Boolean?
+  decisionUse              String?
 
   result      NflGsimResult       @relation(fields: [resultId], references: [id], onDelete: Cascade)
   totalLines  NflGsimTotalLine[]
   spreadLines NflGsimSpreadLine[]
 
   @@unique([resultId, gameId])
+  @@index([gameId])
   @@index([scheduledStartDate])
 }
 

@@ -36,7 +36,10 @@ export async function POST(req: NextRequest) {
 
   const parsed = nflGsimResultsSchema.safeParse(unknownPayload)
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Payload does not match qsc.nfl_gsim.results.v1' }, { status: 422 })
+    return NextResponse.json(
+      { error: 'Payload does not match qsc.nfl_gsim.results.v1' },
+      { status: 422 },
+    )
   }
 
   const payload = parsed.data
@@ -92,6 +95,10 @@ export async function POST(req: NextRequest) {
           provisional: game.provisional,
           modelRelease: game.model_release,
           runtimeArtifactHash: game.runtime_artifact_hash,
+          snapshotStatus: game.readiness?.snapshot_status,
+          weatherStatus: game.readiness?.weather_status,
+          injuryFeedAvailable: game.readiness?.injury_feed_available,
+          decisionUse: game.readiness?.decision_use,
           totalLines: {
             create: (game.model_total_lines ?? []).map((line) => ({
               threshold: line.threshold,
