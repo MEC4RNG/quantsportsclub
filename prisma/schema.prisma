@@ -2,6 +2,18 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Immutable, strictly validated public-safe output only; private dashboard access.
+model MlbGsimResult {
+  id          String   @id @default(cuid())
+  payloadHash String   @unique
+  slateDate   String
+  generatedAt DateTime
+  receivedAt  DateTime @default(now())
+  payload     Json
+
+  @@index([slateDate, generatedAt])
+}
+
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
