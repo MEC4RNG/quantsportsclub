@@ -27,6 +27,6 @@ Dashboard freshness is an explicit 90-minute display policy, not a model validat
 
 ## Checks
 
-Run `python -m unittest discover -s scripts/mlb -p test_*.py`, `npm test`, `npm run typecheck`, `npx eslint src`, and `npm run build`. The existing `npm run lint` invokes `next lint`, which is not supported by the installed Next.js version; use the direct ESLint command with ESLINT_USE_FLAT_CONFIG=false.
+Run `python -m unittest discover -s scripts/mlb -p test_*.py`, `npm test`, `npm run typecheck`, `npm run lint`, and `npm run build`. The installed Next.js 15 supports the repository lint command; it emits a deprecation notice for Next.js 16.
 
 Live deployment and scheduled delivery must be verified separately from local unit checks. Local tests mock storage; they do not establish that a production database migration has been applied.
