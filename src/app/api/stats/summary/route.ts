@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     const roi = staked > 0 ? (realized / staked) * 100 : 0
 
     return NextResponse.json({ days, totals: { won, lost, pending }, roi })
-  } catch (err) {
-    return NextResponse.json({ error: 'failed_to_compute_summary' }, { status: 500 })
+  } catch {
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }

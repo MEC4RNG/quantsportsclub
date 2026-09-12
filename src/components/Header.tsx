@@ -19,6 +19,7 @@ const Inner = styled.div`
   display: flex;
   align-items: center;
   gap: 18px;
+  flex-wrap: wrap;
 `
 
 const Brand = styled(Link)`
@@ -34,6 +35,7 @@ const Grow = styled.div`
 
 const Nav = styled.nav`
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
 `
@@ -94,6 +96,16 @@ export default function Header() {
           <A href={href('stats')} $active={isActive('stats')} aria-current={isActive('stats') ? 'page' : undefined}>
             Stats
           </A>
+          {authed && (
+            <A href="/dashboard/mlb" $active={pathname === '/dashboard/mlb'} aria-current={pathname === '/dashboard/mlb' ? 'page' : undefined}>
+              MLB Models
+            </A>
+          )}
+          {authed && (
+            <A href="/dashboard/nfl" $active={pathname === '/dashboard/nfl'} aria-current={pathname === '/dashboard/nfl' ? 'page' : undefined}>
+              NFL Models
+            </A>
+          )}
           <A href={href('leaderboard')} $active={isActive('leaderboard')} aria-current={isActive('leaderboard') ? 'page' : undefined}>
             Leaderboard
           </A>

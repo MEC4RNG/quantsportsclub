@@ -29,7 +29,7 @@
     "@upstash/ratelimit": "^2.0.6",
     "@upstash/redis": "^1.35.3",
     "csv-parse": "^6.1.0",
-    "next": "latest",
+    "next": "15.5.24",
     "next-auth": "^4.24.11",
     "pino": "^9.9.5",
     "react": "18.3.1",

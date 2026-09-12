@@ -1,0 +1,27 @@
+.main { max-width: 1160px; margin: 32px auto; padding: 0 20px 40px; color: #eef4fb; font-size: 1rem; }
+.heading { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 24px; }
+.heading a { color: #77dcd3; }
+.heading h1 { font-size: 2.25rem; margin: 16px 0 8px; }
+.heading p { color: #b9c6d6; }
+.date { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.date input, .date button { font: inherit; padding: 10px 12px; border-radius: 6px; border: 1px solid #607083; background: #111e30; color: #eef4fb; color-scheme: dark; }
+.date button { cursor: pointer; background: #77dcd3; color: #0b1821; font-weight: 700; }
+.date input:focus-visible, .date button:focus-visible { outline: 3px solid #eef4fb; outline-offset: 3px; }
+.notice { background: #152332; border-left: 3px solid #77dcd3; padding: 16px; line-height: 1.6; margin: 24px 0; }
+.summary { display: flex; flex-wrap: wrap; gap: 16px 32px; }
+.summary strong { font-size: 1.5rem; margin-right: 6px; }
+.timestamp { color: #b9c6d6; font-size: .875rem; line-height: 1.6; margin: 20px 0; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 18px; }
+.card { padding: 22px; background: #101b2b; border: 1px solid #344358; border-radius: 10px; min-width: 0; }
+.meta { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; color: #b9c6d6; font-size: .875rem; }
+.card h2 { font-size: 1.25rem; line-height: 1.5; margin: 20px 0 12px; overflow-wrap: anywhere; }
+.at { display: block; color: #a9b9cb; font-size: .875rem; font-weight: 400; }
+.status { color: #77dcd3; font-size: .875rem; font-weight: 700; }
+.metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 24px 0; }
+.metrics div:last-child { grid-column: 1 / -1; border-top: 1px solid #344358; padding-top: 16px; }
+.metrics dt { color: #b9c6d6; font-size: .875rem; }
+.metrics dd { font-size: 1.75rem; margin: 6px 0 0; font-variant-numeric: tabular-nums; }
+.reference { color: #e7c98b; line-height: 1.5; }
+.source { color: #b9c6d6; font-size: .875rem; line-height: 1.5; }
+.empty { padding: 32px 0; line-height: 1.6; }
+@media (max-width: 480px) { .main { padding: 0 16px 32px; } .date { align-items: stretch; } .date label { width: 100%; } .card { padding: 18px; } }

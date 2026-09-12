@@ -34,7 +34,7 @@ export async function GET() {
     })
 
     return NextResponse.json(leaderboard)
-  } catch (_err) {
-    return NextResponse.json({ error: 'Internal Error' }, { status: 500 })
+  } catch {
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }
