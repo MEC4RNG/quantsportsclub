@@ -1,0 +1,18 @@
+.main { max-width: 1200px; margin: 0 auto; padding: 32px 20px; color: #e5e7eb; }
+.main h1 { font-size: 2rem; margin: 18px 0 8px; }
+.main a { color: #7dd3fc; }
+.main p { line-height: 1.6; }
+.notice { border-left: 3px solid #38bdf8; background: #122033; padding: 16px; }
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin: 24px 0; }
+.metrics article { background: #111827; border: 1px solid #334155; border-radius: 12px; padding: 20px; }
+.metrics h2 { font-size: 1rem; font-weight: 500; }
+.metrics strong { display: block; font-size: 2.3rem; margin: 12px 0; }
+.metrics p { font-size: .85rem; color: #cbd5e1; }
+.scroll { overflow-x: auto; }
+.scroll table { width: 100%; border-collapse: collapse; text-align: left; }
+.scroll caption { text-align: left; padding: 12px 0; color: #cbd5e1; }
+.scroll th, .scroll td { padding: 14px 12px; border-bottom: 1px solid #334155; vertical-align: top; min-width: 90px; }
+.scroll td:first-child { min-width: 230px; }
+.scroll details p { max-width: 260px; overflow-wrap: anywhere; font-size: .8rem; }
+.method { margin-top: 28px; padding: 20px; background: #111827; border: 1px solid #334155; border-radius: 12px; }
+.main summary { cursor: pointer; }

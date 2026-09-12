@@ -13,7 +13,7 @@ export default function MlbSlate({ slate, date, now = Date.now() }: {
   return <main className={styles.main}>
     <div className={styles.heading}>
       <div><Link href="/dashboard">Dashboard</Link><h1>MLB models</h1>
-        <p>Game projections · {date}</p></div>
+        <p>Game projections · {date} · <Link href="/dashboard/mlb/performance">Model performance</Link></p></div>
       <form className={styles.date} action="/dashboard/mlb">
         <label htmlFor="slate-date">Slate date</label>
         <input id="slate-date" name="date" type="date" defaultValue={date} required />
