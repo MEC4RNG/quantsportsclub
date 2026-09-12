@@ -15,7 +15,7 @@ const final: OfficialGame = { gamePk: 123, gameDate: '2026-09-11T19:00:00Z', sta
 it('deduplicates games and selects the earliest eligible receipt regardless of input order', () => {
   const result = selectForecasts([snapshot('b', '2026-09-11T17:10:00Z'), snapshot()])
   expect(result.forecasts).toHaveLength(1)
-  expect(result.forecasts[0].snapshotId).toBe('a')
+  expect(result.forecasts[0]!.snapshotId).toBe('a')
 })
 it.each(['2026-09-11T19:00:00Z', '2026-09-11T19:01:00Z', '2026-09-11T18:31:00Z', '2026-09-11T16:59:00Z'])(
   'rejects late, stale or chronologically invalid receipt %s', received => {
@@ -24,7 +24,7 @@ it.each(['2026-09-11T19:00:00Z', '2026-09-11T19:01:00Z', '2026-09-11T18:31:00Z',
 it('never admits retained references or invalid payloads', () => {
   const row = snapshot()
   const payload = row.payload as { games: { context: string }[] }
-  payload.games[0].context = 'PREGAME_REFERENCE'
+  payload.games[0]!.context = 'PREGAME_REFERENCE'
   const result = selectForecasts([row, { ...snapshot('b'), payload: {} }])
   expect(result.forecasts).toHaveLength(0)
   expect(result.excluded).toBe(1)
