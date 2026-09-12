@@ -26,5 +26,7 @@ jobs:
           cache: 'npm'
       - run: npm ci || npm install
       - run: npm run typecheck
+      - name: Verify MLB ingestion and reporting contracts
+        run: npx vitest run src/tests/mlb*.test.ts src/tests/mlb*.test.tsx
       - run: npm run lint
       - run: npm run build

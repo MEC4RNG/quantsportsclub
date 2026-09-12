@@ -10,8 +10,23 @@ model MlbGsimResult {
   generatedAt DateTime
   receivedAt  DateTime @default(now())
   payload     Json
+  marketSnapshots MlbMarketSnapshot[]
 
   @@index([slateDate, generatedAt])
+}
+
+model MlbMarketSnapshot {
+  id               String   @id @default(cuid())
+  payloadHash      String   @unique
+  modelPayloadHash String
+  slateDate        String
+  generatedAt      DateTime
+  receivedAt       DateTime @default(now())
+  payload          Json
+  modelResult      MlbGsimResult @relation(fields: [modelPayloadHash], references: [payloadHash])
+
+  @@index([slateDate, receivedAt])
+  @@index([modelPayloadHash])
 }
 
 datasource db {
