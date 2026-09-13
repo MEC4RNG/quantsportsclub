@@ -173,6 +173,38 @@ describe('NFL GSIM results ingestion', () => {
     expect(create).toHaveProperty('games.create.0.weatherStatus', 'CURRENT_WEATHER_FORECAST_READY')
   })
 
+  it('accepts a scoped ready update with mixed approved per-game weather statuses', async () => {
+    const ready = payload()
+    ready.publication.decision_use = 'PRODUCTION_READY_NOT_FINAL_GAME_DAY'
+    ready.games[0]!.provisional = false
+    ready.games[0]!.readiness = {
+      snapshot_status: 'CURRENT_GAME_SNAPSHOT_READY',
+      weather_status: 'VALIDATED_ZERO_EFFECT',
+      injury_feed_available: true,
+      decision_use: 'PRODUCTION_READY_NOT_FINAL_GAME_DAY',
+    }
+    ready.games.push({
+      ...ready.games[0]!,
+      game_id: '2026_01_SECOND_GAME',
+      readiness: {
+        snapshot_status: 'CURRENT_GAME_SNAPSHOT_READY',
+        weather_status: 'CURRENT_WEATHER_FORECAST_READY',
+        injury_feed_available: true,
+        decision_use: 'PRODUCTION_READY_NOT_FINAL_GAME_DAY',
+      },
+    } as (typeof ready.games)[number])
+    ready.run.scheduled_games = 2
+    ready.run.simulated_games = 2
+    ready.readiness.injury_feed_available = true
+    ready.readiness.weather_status = 'CURRENT_WEATHER_PARTIALLY_AVAILABLE'
+    ready.payload_hash = calculateNflGsimPayloadHash(ready)
+
+    const response = await POST(request(ready))
+
+    expect(response.status).toBe(200)
+    expect(upsert).toHaveBeenCalledTimes(1)
+  })
+
   it('rejects projections outside the payload game-update scope', async () => {
     const invalid = payload()
     invalid.player_projections = [

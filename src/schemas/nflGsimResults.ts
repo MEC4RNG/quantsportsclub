@@ -197,10 +197,18 @@ export const nflGsimResultsSchema = z
           (!game.readiness ||
             game.readiness.decision_use === 'PRODUCTION_READY_NOT_FINAL_GAME_DAY'),
       )
+
+    // Game-scoped deliveries can legitimately combine different approved weather
+    // statuses (for example a dome and a current outdoor forecast). When every
+    // game carries an explicit ready state, that state is authoritative for the
+    // update scope; legacy payloads without per-game readiness still use the
+    // aggregate readiness fields below.
+    const everyGameHasExplicitReadiness = payload.games.every((game) => Boolean(game.readiness))
     const readyInputs =
       everyGameReady &&
-      payload.readiness.injury_feed_available &&
-      readyWeatherStatuses.has(payload.readiness.weather_status)
+      (everyGameHasExplicitReadiness ||
+        (payload.readiness.injury_feed_available &&
+          readyWeatherStatuses.has(payload.readiness.weather_status)))
     if (!readyInputs) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
