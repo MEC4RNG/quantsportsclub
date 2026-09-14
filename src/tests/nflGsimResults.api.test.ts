@@ -3,7 +3,8 @@ import { NextRequest } from 'next/server'
 import { calculateNflGsimPayloadHash } from '@/lib/nflGsimIntegrity'
 import type { NflGsimResults } from '@/schemas/nflGsimResults'
 
-const { upsert } = vi.hoisted(() => ({
+const { findUnique, upsert } = vi.hoisted(() => ({
+  findUnique: vi.fn(),
   upsert: vi.fn(async ({ where }: { where: { payloadHash: string }; create?: unknown }) => ({
     id: 'result-1',
     payloadHash: where.payloadHash,
@@ -11,10 +12,10 @@ const { upsert } = vi.hoisted(() => ({
 }))
 
 vi.mock('@/lib/db', () => ({
-  prisma: { nflGsimResult: { upsert } },
+  prisma: { nflGsimResult: { findUnique, upsert } },
 }))
 
-import { POST } from '@/app/api/integrations/nfl-gsim/results/route'
+import { GET, POST } from '@/app/api/integrations/nfl-gsim/results/route'
 
 function payload(): NflGsimResults {
   const value: NflGsimResults = {
@@ -83,10 +84,84 @@ function request(value: unknown, secret = 'test-service-secret') {
   })
 }
 
+function statusRequest(payloadHash: string, secret = 'test-service-secret') {
+  return new NextRequest(
+    `http://localhost/api/integrations/nfl-gsim/results?payload_hash=${payloadHash}`,
+    { headers: { authorization: `Bearer ${secret}` } },
+  )
+}
+
 describe('NFL GSIM results ingestion', () => {
   beforeEach(() => {
     process.env.NFL_GSIM_INGESTION_SECRET = 'test-service-secret'
+    findUnique.mockReset()
     upsert.mockClear()
+  })
+
+  it('authenticates status reads before querying the database', async () => {
+    const response = await GET(statusRequest('a'.repeat(64), 'wrong'))
+
+    expect(response.status).toBe(401)
+    expect(findUnique).not.toHaveBeenCalled()
+  })
+
+  it('rejects an invalid status hash before querying the database', async () => {
+    const response = await GET(statusRequest('not-a-hash'))
+
+    expect(response.status).toBe(400)
+    expect(findUnique).not.toHaveBeenCalled()
+  })
+
+  it('returns a credential-safe not-found status for an unknown hash', async () => {
+    findUnique.mockResolvedValueOnce(null)
+
+    const response = await GET(statusRequest('a'.repeat(64)))
+
+    expect(response.status).toBe(404)
+    expect(response.headers.get('cache-control')).toBe('no-store')
+    expect(await response.json()).toEqual({ found: false, payloadHash: 'a'.repeat(64) })
+  })
+
+  it('returns persisted readiness and counts for an exact payload hash', async () => {
+    findUnique.mockResolvedValueOnce({
+      id: 'result-1',
+      payloadHash: 'a'.repeat(64),
+      schemaVersion: 'qsc.nfl_gsim.results.v1',
+      generatedAt: new Date('2026-09-14T20:15:52.000Z'),
+      season: 2026,
+      week: 1,
+      scheduledGames: 1,
+      simulatedGames: 1,
+      snapshotStatus: 'CURRENT_GAME_SNAPSHOT_READY',
+      weatherStatus: 'CURRENT_WEATHER_FORECAST_READY',
+      injuryFeedAvailable: true,
+      visibility: 'PRIVATE_QSC',
+      decisionUse: 'PRODUCTION_READY_NOT_FINAL_GAME_DAY',
+      games: [
+        {
+          gameId: '2026_01_A_B',
+          provisional: false,
+          snapshotStatus: 'CURRENT_GAME_SNAPSHOT_READY',
+          weatherStatus: 'CURRENT_WEATHER_FORECAST_READY',
+          injuryFeedAvailable: true,
+          decisionUse: 'PRODUCTION_READY_NOT_FINAL_GAME_DAY',
+        },
+      ],
+      _count: { games: 1, blockedGames: 0, playerProjections: 16 },
+    })
+
+    const response = await GET(statusRequest('a'.repeat(64)))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('cache-control')).toBe('no-store')
+    expect(body.found).toBe(true)
+    expect(body.result.generatedAt).toBe('2026-09-14T20:15:52.000Z')
+    expect(body.result.counts).toEqual({ games: 1, blockedGames: 0, playerProjections: 16 })
+    expect(body.result).not.toHaveProperty('_count')
+    expect(findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { payloadHash: 'a'.repeat(64) } }),
+    )
   })
 
   afterEach(() => {
