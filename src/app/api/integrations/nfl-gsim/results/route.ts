@@ -36,7 +36,10 @@ export async function POST(req: NextRequest) {
 
   const parsed = nflGsimResultsSchema.safeParse(unknownPayload)
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Payload does not match qsc.nfl_gsim.results.v1' }, { status: 422 })
+    return NextResponse.json(
+      { error: 'Payload does not match qsc.nfl_gsim.results.v1' },
+      { status: 422 },
+    )
   }
 
   const payload = parsed.data
@@ -92,6 +95,50 @@ export async function POST(req: NextRequest) {
           provisional: game.provisional,
           modelRelease: game.model_release,
           runtimeArtifactHash: game.runtime_artifact_hash,
+          snapshotStatus: game.readiness?.snapshot_status,
+          weatherStatus: game.readiness?.weather_status,
+          injuryFeedAvailable: game.readiness?.injury_feed_available,
+          decisionUse: game.readiness?.decision_use,
+          totalLines: {
+            create: (game.model_total_lines ?? []).map((line) => ({
+              threshold: line.threshold,
+              overProbability: line.over_probability,
+              underProbability: line.under_probability,
+              pushProbability: line.push_probability,
+            })),
+          },
+          spreadLines: {
+            create: (game.model_spread_lines ?? []).map((line) => ({
+              homeHandicap: line.home_handicap,
+              homeCoverProbability: line.home_cover_probability,
+              awayCoverProbability: line.away_cover_probability,
+              pushProbability: line.push_probability,
+            })),
+          },
+        })),
+      },
+      playerProjections: {
+        create: (payload.player_projections ?? []).map((player) => ({
+          sourceGameId: player.game_id,
+          playerId: player.player_id,
+          playerName: player.player_name,
+          team: player.team,
+          position: player.position,
+          trialCount: player.trial_count,
+          passingYards: player.means.passing_yards,
+          rushingYards: player.means.rushing_yards,
+          receivingYards: player.means.receiving_yards,
+          receptions: player.means.receptions,
+          totalTouchdowns: player.means.total_touchdowns,
+          thresholds: {
+            create: player.thresholds.map((line) => ({
+              statistic: line.statistic,
+              threshold: line.threshold,
+              overProbability: line.over_probability,
+              underProbability: line.under_probability,
+              pushProbability: line.push_probability,
+            })),
+          },
         })),
       },
     },

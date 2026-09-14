@@ -142,6 +142,97 @@ describe('NFL GSIM results ingestion', () => {
     expect(upsert).toHaveBeenCalledTimes(1)
   })
 
+  it('accepts and persists a game-scoped ready update', async () => {
+    const ready = payload()
+    ready.run.scheduled_games = 1
+    ready.blocked_games = []
+    ready.publication.decision_use = 'PRODUCTION_READY_NOT_FINAL_GAME_DAY'
+    ready.games[0]!.provisional = false
+    ready.games[0]!.readiness = {
+      snapshot_status: 'CURRENT_GAME_SNAPSHOT_READY',
+      weather_status: 'CURRENT_WEATHER_FORECAST_READY',
+      injury_feed_available: true,
+      decision_use: 'PRODUCTION_READY_NOT_FINAL_GAME_DAY',
+    }
+    ready.readiness = {
+      snapshot_status: 'CURRENT_GAME_SNAPSHOT_READY',
+      weather_status: 'CURRENT_WEATHER_FORECAST_READY',
+      injury_feed_available: true,
+      refresh_artifact_hash: 'b'.repeat(64),
+    }
+    ready.payload_hash = calculateNflGsimPayloadHash(ready)
+
+    const response = await POST(request(ready))
+
+    expect(response.status).toBe(200)
+    const create = upsert.mock.calls[0]![0].create as Record<string, unknown>
+    expect(create).toHaveProperty(
+      'games.create.0.decisionUse',
+      'PRODUCTION_READY_NOT_FINAL_GAME_DAY',
+    )
+    expect(create).toHaveProperty('games.create.0.weatherStatus', 'CURRENT_WEATHER_FORECAST_READY')
+  })
+
+  it('accepts a scoped ready update with mixed approved per-game weather statuses', async () => {
+    const ready = payload()
+    ready.publication.decision_use = 'PRODUCTION_READY_NOT_FINAL_GAME_DAY'
+    ready.games[0]!.provisional = false
+    ready.games[0]!.readiness = {
+      snapshot_status: 'CURRENT_GAME_SNAPSHOT_READY',
+      weather_status: 'VALIDATED_ZERO_EFFECT',
+      injury_feed_available: true,
+      decision_use: 'PRODUCTION_READY_NOT_FINAL_GAME_DAY',
+    }
+    ready.games.push({
+      ...ready.games[0]!,
+      game_id: '2026_01_SECOND_GAME',
+      readiness: {
+        snapshot_status: 'CURRENT_GAME_SNAPSHOT_READY',
+        weather_status: 'CURRENT_WEATHER_FORECAST_READY',
+        injury_feed_available: true,
+        decision_use: 'PRODUCTION_READY_NOT_FINAL_GAME_DAY',
+      },
+    } as (typeof ready.games)[number])
+    ready.run.scheduled_games = 2
+    ready.run.simulated_games = 2
+    ready.readiness.injury_feed_available = true
+    ready.readiness.weather_status = 'CURRENT_WEATHER_PARTIALLY_AVAILABLE'
+    ready.payload_hash = calculateNflGsimPayloadHash(ready)
+
+    const response = await POST(request(ready))
+
+    expect(response.status).toBe(200)
+    expect(upsert).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects projections outside the payload game-update scope', async () => {
+    const invalid = payload()
+    invalid.player_projections = [
+      {
+        game_id: '2026_01_OTHER_GAME',
+        player_id: 'player-1',
+        player_name: 'Test Player',
+        team: 'A',
+        position: 'QB',
+        trial_count: 100,
+        means: {
+          passing_yards: 255,
+          rushing_yards: 15,
+          receiving_yards: 0,
+          receptions: 0,
+          total_touchdowns: 2,
+        },
+        thresholds: [],
+      },
+    ]
+    invalid.payload_hash = calculateNflGsimPayloadHash(invalid)
+
+    const response = await POST(request(invalid))
+
+    expect(response.status).toBe(422)
+    expect(upsert).not.toHaveBeenCalled()
+  })
+
   it('rejects a payload whose content does not match its hash', async () => {
     const altered = payload()
     altered.games[0]!.home_win_probability = 0.7
@@ -161,5 +252,54 @@ describe('NFL GSIM results ingestion', () => {
     expect(upsert.mock.calls[0]![0].where).toEqual({ payloadHash: value.payload_hash })
     expect(upsert.mock.calls[1]![0].where).toEqual({ payloadHash: value.payload_hash })
     expect(upsert.mock.calls[0]![0].create).not.toHaveProperty('private_model_parameters')
+  })
+
+  it('persists optional model-only game lines and player projections', async () => {
+    const value = payload()
+    value.games[0]!.model_total_lines = [
+      { threshold: 45.5, over_probability: 0.55, under_probability: 0.45, push_probability: 0 },
+    ]
+    value.games[0]!.model_spread_lines = [
+      {
+        home_handicap: -3.5,
+        home_cover_probability: 0.52,
+        away_cover_probability: 0.48,
+        push_probability: 0,
+      },
+    ]
+    value.player_projections = [
+      {
+        game_id: '2026_01_A_B',
+        player_id: 'player-1',
+        player_name: 'Test Player',
+        team: 'A',
+        position: 'QB',
+        trial_count: 100,
+        means: {
+          passing_yards: 255,
+          rushing_yards: 15,
+          receiving_yards: 0,
+          receptions: 0,
+          total_touchdowns: 2,
+        },
+        thresholds: [
+          {
+            statistic: 'passing_yards',
+            threshold: 249.5,
+            over_probability: 0.54,
+            under_probability: 0.46,
+            push_probability: 0,
+          },
+        ],
+      },
+    ]
+    value.payload_hash = calculateNflGsimPayloadHash(value)
+
+    const response = await POST(request(value))
+
+    expect(response.status).toBe(200)
+    const create = upsert.mock.calls[0]![0].create as Record<string, unknown>
+    expect(create).toHaveProperty('playerProjections.create.0.playerName', 'Test Player')
+    expect(create).toHaveProperty('games.create.0.totalLines.create.0.threshold', 45.5)
   })
 })

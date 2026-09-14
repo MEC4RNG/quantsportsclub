@@ -13,6 +13,18 @@ const FLOAT_FIELDS = new Set([
   'total_p10',
   'total_p50',
   'total_p90',
+  'threshold',
+  'over_probability',
+  'under_probability',
+  'push_probability',
+  'home_handicap',
+  'home_cover_probability',
+  'away_cover_probability',
+  'passing_yards',
+  'rushing_yards',
+  'receiving_yards',
+  'receptions',
+  'total_touchdowns',
 ])
 
 // Mirrors nfl-gsim's json.dumps(sort_keys=True, separators=(",", ":"), ensure_ascii=True).

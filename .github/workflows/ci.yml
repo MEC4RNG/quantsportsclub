@@ -7,6 +7,15 @@ on:
     branches: [ "main" ]
 
 jobs:
+  mlb-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check MLB export and private draft contracts
+        run: python -m unittest discover -s scripts/mlb -p 'test_*.py' -v
   build:
     runs-on: ubuntu-latest
     steps:
@@ -17,5 +26,7 @@ jobs:
           cache: 'npm'
       - run: npm ci || npm install
       - run: npm run typecheck
+      - name: Verify MLB ingestion and reporting contracts
+        run: npx vitest run src/tests/mlb*.test.ts src/tests/mlb*.test.tsx
       - run: npm run lint
       - run: npm run build
