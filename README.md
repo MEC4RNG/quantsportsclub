@@ -58,6 +58,12 @@ is absent, strictly rejects fields outside the published schema, verifies the
 exporter's canonical SHA-256 payload hash, and idempotently stores accepted
 contracts by that hash.
 
+Automated delivery checks can read the normalized record with
+`GET /api/integrations/nfl-gsim/results?payload_hash=<sha256>` using the same
+Bearer credential. The response is never cached and contains only the exact
+record's readiness fields, per-game state, and game, blocked-game, and player
+projection counts. Invalid credentials fail before any database query.
+
 Never place that secret in a `NEXT_PUBLIC_*` variable or commit it. Never send or
 store private model code, fitted artifacts, training data, retained trials,
 credentials, or raw run data in this public repository or its database. Apply

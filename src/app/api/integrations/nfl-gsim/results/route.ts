@@ -8,6 +8,72 @@ import { nflGsimResultsSchema } from '@/schemas/nflGsimResults'
 export const runtime = 'nodejs'
 
 const MAX_BODY_BYTES = 1024 * 1024
+const PAYLOAD_HASH_PATTERN = /^[a-f0-9]{64}$/
+
+export async function GET(req: NextRequest) {
+  const auth = authenticateNflGsimService(req)
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
+
+  const payloadHash = req.nextUrl.searchParams.get('payload_hash') ?? ''
+  if (!PAYLOAD_HASH_PATTERN.test(payloadHash)) {
+    return NextResponse.json(
+      { error: 'payload_hash must be a lowercase 64-character SHA-256 hash' },
+      { status: 400 },
+    )
+  }
+
+  const result = await prisma.nflGsimResult.findUnique({
+    where: { payloadHash },
+    select: {
+      id: true,
+      payloadHash: true,
+      schemaVersion: true,
+      generatedAt: true,
+      season: true,
+      week: true,
+      scheduledGames: true,
+      simulatedGames: true,
+      snapshotStatus: true,
+      weatherStatus: true,
+      injuryFeedAvailable: true,
+      visibility: true,
+      decisionUse: true,
+      games: {
+        orderBy: { gameId: 'asc' },
+        select: {
+          gameId: true,
+          provisional: true,
+          snapshotStatus: true,
+          weatherStatus: true,
+          injuryFeedAvailable: true,
+          decisionUse: true,
+        },
+      },
+      _count: { select: { games: true, blockedGames: true, playerProjections: true } },
+    },
+  })
+
+  if (!result) {
+    return NextResponse.json(
+      { found: false, payloadHash },
+      { status: 404, headers: { 'Cache-Control': 'no-store' } },
+    )
+  }
+
+  const { _count, ...persistedResult } = result
+
+  return NextResponse.json(
+    {
+      found: true,
+      result: {
+        ...persistedResult,
+        generatedAt: result.generatedAt.toISOString(),
+        counts: _count,
+      },
+    },
+    { status: 200, headers: { 'Cache-Control': 'no-store' } },
+  )
+}
 
 export async function POST(req: NextRequest) {
   const auth = authenticateNflGsimService(req)
