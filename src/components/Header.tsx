@@ -70,10 +70,11 @@ function join(...parts: string[]) {
 }
 
 export default function Header() {
-  const { status } = useSession()
+  const { data, status } = useSession()
   const pathname = usePathname()
 
   const authed = status === 'authenticated'
+  const contentReviewer = (data?.user as { contentReviewer?: boolean } | undefined)?.contentReviewer === true
   // Helper that builds the right href depending on auth
   const href = (slug: string) => '/' + (authed ? join('dashboard', slug) : join(slug))
 
@@ -106,7 +107,7 @@ export default function Header() {
               NFL Models
             </A>
           )}
-          {authed && (
+          {contentReviewer && (
             <A href="/dashboard/content" $active={pathname === '/dashboard/content'} aria-current={pathname === '/dashboard/content' ? 'page' : undefined}>
               Content Review
             </A>

@@ -11,6 +11,8 @@ async function decide(formData: FormData) {
   'use server'
   const session = await getServerSession(authOptions)
   if (!session) redirect('/auth/signin?callbackUrl=/dashboard/content')
+  if ((session.user as { contentReviewer?: boolean } | undefined)?.contentReviewer !== true)
+    redirect('/dashboard')
   const id = String(formData.get('id') ?? '')
   const decision = String(formData.get('decision') ?? '')
   if (!['COPY_APPROVED', 'REJECTED'].includes(decision)) throw new Error('Invalid decision')
@@ -42,6 +44,8 @@ async function decide(formData: FormData) {
 export default async function ContentReviewPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect('/auth/signin?callbackUrl=/dashboard/content')
+  if ((session.user as { contentReviewer?: boolean } | undefined)?.contentReviewer !== true)
+    redirect('/dashboard')
   const storedRows = await prisma.contentDraftPackage.findMany({
     orderBy: { reviewedAt: 'desc' },
     take: 100,
