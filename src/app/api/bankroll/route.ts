@@ -6,6 +6,7 @@ import { rateLimit } from '@/lib/rateLimit'
 import { getClientIp } from '@/lib/ip'
 import { requireApiKey } from '@/lib/authz'
 import { logger } from '@/lib/log'
+import { getSessionUserId } from '@/lib/sessionUser'
 
 const CreateBankrollEntry = z.object({
   userId: z.string().min(1),
@@ -15,7 +16,10 @@ const CreateBankrollEntry = z.object({
 })
 
 export async function GET() {
+  const userId = await getSessionUserId()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const rows = await prisma.bankrollEntry.findMany({
+    where: { userId },
     orderBy: [{ createdAt: 'desc' }],
     take: 50,
   })

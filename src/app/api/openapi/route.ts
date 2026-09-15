@@ -43,7 +43,10 @@ export async function GET() {
   registry.registerPath({
     method: 'get',
     path: '/api/bankroll',
-    responses: { 200: { description: 'List bankroll entries' } },
+    responses: {
+      200: { description: 'List the signed-in user’s bankroll entries' },
+      401: { description: 'Authentication required' },
+    },
   })
   registry.registerPath({
     method: 'post',
@@ -60,7 +63,10 @@ export async function GET() {
   registry.registerPath({
     method: 'get',
     path: '/api/bets',
-    responses: { 200: { description: 'List bets' } },
+    responses: {
+      200: { description: 'List the signed-in user’s bets' },
+      401: { description: 'Authentication required' },
+    },
   })
   registry.registerPath({
     method: 'post',

@@ -115,12 +115,16 @@ export default function Header() {
           <A href={href('leaderboard')} $active={isActive('leaderboard')} aria-current={isActive('leaderboard') ? 'page' : undefined}>
             Leaderboard
           </A>
-          <A href={href('exposure')} $active={isActive('exposure')} aria-current={isActive('exposure') ? 'page' : undefined}>
-            Exposure
-          </A>
-          <A href={href('betslip')} $active={isActive('betslip')} aria-current={isActive('betslip') ? 'page' : undefined}>
-            Betslip
-          </A>
+          {authed && (
+            <A href="/exposure" $active={pathname === '/exposure'} aria-current={pathname === '/exposure' ? 'page' : undefined}>
+              Exposure
+            </A>
+          )}
+          {authed && (
+            <A href="/betslip" $active={pathname === '/betslip'} aria-current={pathname === '/betslip' ? 'page' : undefined}>
+              Betslip
+            </A>
+          )}
         </Nav>
 
         <Grow />

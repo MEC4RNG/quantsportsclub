@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db'
 import { rateLimit } from '@/lib/rateLimit'
 import { getClientIp } from '@/lib/ip'
 import { requireApiKey } from '@/lib/authz'
+import { getSessionUserId } from '@/lib/sessionUser'
 
 // --- local helper: convert American odds -> Decimal odds (e.g. -110 -> 1.9091, +150 -> 2.5)
 function toDecimalFromAmerican(american: number): number {
@@ -24,9 +25,11 @@ const CreateBet = z.object({
   fairOdds: z.number().nullable().optional().default(null), // e.g. -105
 }).strict()
 
-// Keep GET public for now
 export async function GET(_req: NextRequest) {
+  const userId = await getSessionUserId()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const rows = await prisma.bet.findMany({
+    where: { userId },
     orderBy: [{ createdAt: 'desc' }],
     take: 50,
   })
@@ -35,9 +38,13 @@ export async function GET(_req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    // --- API key gate
-    const auth = await requireApiKey(req)
-    if (!auth.ok) return auth.res
+    // Signed-in users write to their own ledger. The API key remains available
+    // for trusted server-to-server ingestion without a browser session.
+    const signedInUserId = await getSessionUserId()
+    if (!signedInUserId) {
+      const auth = await requireApiKey(req)
+      if (!auth.ok) return auth.res
+    }
 
     // --- Rate limit
     const ip = getClientIp(req)
@@ -73,7 +80,7 @@ export async function POST(req: NextRequest) {
     // --- Prisma create
     // Use unchecked create by providing userId. Make sure DEMO_USER_ID exists in DB (seed),
     // or set it in .env / Vercel env. Falls back to 'demo-user'.
-   const userId = process.env.DEMO_USER_ID ?? 'demo-user'
+   const userId = signedInUserId ?? process.env.DEMO_USER_ID ?? 'demo-user'
 
 const created = await prisma.bet.create({
   data: {

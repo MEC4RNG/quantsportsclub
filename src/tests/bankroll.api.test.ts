@@ -1,9 +1,12 @@
 // src/tests/bankroll.api.test.ts
-import { describe, it, expect, beforeEach, beforeAll } from 'vitest'
+import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 import prisma from '@/lib/db'
 import { GET, POST } from '@/app/api/bankroll/route'
 import { _resetRateLimitStore } from '@/lib/rateLimit'
+
+const { sessionUserId } = vi.hoisted(() => ({ sessionUserId: vi.fn() }))
+vi.mock('@/lib/sessionUser', () => ({ getSessionUserId: sessionUserId }))
 
 const API_KEY = 'test-key'
 
@@ -40,11 +43,18 @@ describe('bankroll API', () => {
 
   beforeEach(() => {
     _resetRateLimitStore()
+    sessionUserId.mockResolvedValue('u1')
   })
 
   it('GET returns list', async () => {
     const res = await GET()
     expect(res.status).toBe(200)
+  })
+
+  it('GET rejects anonymous access', async () => {
+    sessionUserId.mockResolvedValue(null)
+    const res = await GET()
+    expect(res.status).toBe(401)
   })
 
   it('POST respects rate limit', async () => {

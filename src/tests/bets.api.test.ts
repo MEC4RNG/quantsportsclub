@@ -1,8 +1,11 @@
 // src/tests/bets.api.test.ts
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest'
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest'
 import { GET as GET_BETS, POST as POST_BETS } from '@/app/api/bets/route'
 import { POST as POST_SETTLE } from '@/app/api/bets/[id]/settle/route'
 import { NextRequest } from 'next/server'
+
+const { sessionUserId } = vi.hoisted(() => ({ sessionUserId: vi.fn() }))
+vi.mock('@/lib/sessionUser', () => ({ getSessionUserId: sessionUserId }))
 
 // ---- helpers ----
 
@@ -39,6 +42,7 @@ beforeAll(() => {
 })
 
 beforeEach(() => {
+  sessionUserId.mockResolvedValue('u1')
   // If you expose a test-only reset for your limiter, call it here:
   // _resetRateLimitStore?.()
 })
@@ -49,6 +53,12 @@ describe('bets API', () => {
   it('GET returns list', async () => {
     const res = await GET_BETS(req('/api/bets'))
     expect(res.status).toBe(200)
+  })
+
+  it('GET rejects anonymous access', async () => {
+    sessionUserId.mockResolvedValue(null)
+    const res = await GET_BETS(req('/api/bets'))
+    expect(res.status).toBe(401)
   })
 
   it('POST respects rate limit', async () => {

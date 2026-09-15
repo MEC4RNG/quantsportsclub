@@ -9,6 +9,8 @@ import {
   type ByMarketRow,
 } from '@/lib/exposure'
 import { ExposureCharts } from '@/components/charts/ExposureCharts'
+import { getSessionUserId } from '@/lib/sessionUser'
+import { redirect } from 'next/navigation'
 
 function fmt(n: number) {
   const s = n.toFixed(2)
@@ -21,6 +23,8 @@ export default async function ExposurePage({
   // Next.js 15: searchParams comes in as a Promise
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
+  const userId = await getSessionUserId()
+  if (!userId) redirect('/auth/signin?callbackUrl=/exposure')
   const sp = await searchParams
   const daysParam = typeof sp?.days === 'string' ? Number(sp.days) : undefined
   const days =
@@ -29,8 +33,8 @@ export default async function ExposurePage({
       : undefined
 
   const [overview, analytics]: [ExposureOverview, ExposureAnalytics] = await Promise.all([
-    getExposureOverview(days),
-    getExposureAnalytics(days),
+    getExposureOverview(userId, days),
+    getExposureAnalytics(userId, days),
   ])
 
   return (
