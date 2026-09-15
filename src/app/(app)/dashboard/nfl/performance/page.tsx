@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { gradeNflForecasts, selectNflForecasts } from '@/lib/nflPerformance'
 import { loadNflResults } from '@/lib/nflOfficialResults'
+import PerformanceRefresh from '@/components/PerformanceRefresh'
 import styles from '../../mlb/performance/performance.module.css'
 
 export const dynamic = 'force-dynamic'
@@ -62,6 +63,7 @@ export default async function NflPerformancePage() {
 
   return (
     <main className={styles.main}>
+      <PerformanceRefresh />
       <Link href="/dashboard/nfl">← NFL models</Link>
       <h1>NFL model performance</h1>
       <p>

@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { selectForecasts, gradeForecasts } from '@/lib/mlbPerformance'
 import { loadOfficialResults } from '@/lib/mlbOfficialResults'
-import MlbRefresh from '@/components/MlbRefresh'
+import PerformanceRefresh from '@/components/PerformanceRefresh'
 import styles from './performance.module.css'
 
 export const dynamic = 'force-dynamic'
@@ -26,7 +26,7 @@ export default async function MlbPerformancePage() {
   const report = gradeForecasts(cohort.forecasts, official.games)
   const metric = (value: number | null, digits = 3) => value === null ? '—' : value.toFixed(digits)
   return <main className={styles.main}>
-    <MlbRefresh />
+    <PerformanceRefresh />
     <Link href="/dashboard/mlb">← MLB models</Link>
     <h1>MLB model performance</h1>
     <p>{start} through {today} · Last 30 slate dates · Private QSC research</p>

@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { selectMarketForecasts, gradeMarketForecasts } from '@/lib/mlbMarket'
 import { loadOfficialResults } from '@/lib/mlbOfficialResults'
-import MlbRefresh from '@/components/MlbRefresh'
+import PerformanceRefresh from '@/components/PerformanceRefresh'
 import styles from '../performance/performance.module.css'
 
 export const dynamic = 'force-dynamic'
@@ -25,7 +25,7 @@ export default async function MlbMarketsPage() {
   const latest = snapshots.reduce<Date | null>((value, row) => !value || row.receivedAt > value ? row.receivedAt : value, null)
   const metric = (value: number | null) => value === null ? '—' : value.toFixed(3)
   return <main className={styles.main}>
-    <MlbRefresh />
+    <PerformanceRefresh />
     <Link href="/dashboard/mlb">← MLB models</Link>
     <h1>MLB market research</h1>
     <p>{start} through {today} · Private QSC research</p>

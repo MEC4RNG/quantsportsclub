@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { mlbGsimResultsSchema } from '@/schemas/mlbGsimResults'
 import MlbSlate from '@/components/MlbSlate'
-import MlbRefresh from '@/components/MlbRefresh'
+import PerformanceRefresh from '@/components/PerformanceRefresh'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,5 +21,5 @@ export default async function MlbResultsPage({ searchParams }: {
     where: { slateDate: date }, orderBy: [{ generatedAt: 'desc' }, { receivedAt: 'desc' }],
   })
   const parsed = mlbGsimResultsSchema.safeParse(latest?.payload)
-  return <><MlbRefresh /><MlbSlate date={date} slate={parsed.success ? parsed.data : null} /></>
+  return <><PerformanceRefresh /><MlbSlate date={date} slate={parsed.success ? parsed.data : null} /></>
 }

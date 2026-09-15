@@ -3,10 +3,12 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
-export default function MlbRefresh() {
+export default function PerformanceRefresh() {
   const router = useRouter()
   useEffect(() => {
-    const refresh = () => { if (document.visibilityState === 'visible') router.refresh() }
+    const refresh = () => {
+      if (document.visibilityState === 'visible') router.refresh()
+    }
     const timer = window.setInterval(refresh, 60_000)
     document.addEventListener('visibilitychange', refresh)
     return () => {

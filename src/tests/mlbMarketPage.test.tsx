@@ -4,7 +4,7 @@ import { beforeEach, expect, it, vi } from 'vitest'
 const { session, findMany, official } = vi.hoisted(() => ({ session: vi.fn(), findMany: vi.fn(), official: vi.fn() }))
 vi.mock('next-auth', () => ({ getServerSession: session }))
 vi.mock('@/lib/auth', () => ({ authOptions: {} }))
-vi.mock('@/components/MlbRefresh', () => ({ default: () => null }))
+vi.mock('@/components/PerformanceRefresh', () => ({ default: () => null }))
 vi.mock('@/lib/db', () => ({ prisma: { mlbMarketSnapshot: { findMany } } }))
 vi.mock('@/lib/mlbOfficialResults', () => ({ loadOfficialResults: official }))
 vi.mock('next/navigation', () => ({ redirect: (url: string) => { throw new Error(`REDIRECT ${url}`) } }))

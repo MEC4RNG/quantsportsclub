@@ -10,6 +10,7 @@ const { session, findFirst, findMany, official } = vi.hoisted(() => ({
 }))
 vi.mock('next-auth', () => ({ getServerSession: session }))
 vi.mock('@/lib/auth', () => ({ authOptions: {} }))
+vi.mock('@/components/PerformanceRefresh', () => ({ default: () => null }))
 vi.mock('@/lib/db', () => ({ prisma: { nflGsimResult: { findFirst, findMany } } }))
 vi.mock('@/lib/nflOfficialResults', () => ({ loadNflResults: official }))
 vi.mock('next/navigation', () => ({
