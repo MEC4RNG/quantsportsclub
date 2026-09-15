@@ -42,10 +42,13 @@ async function decide(formData: FormData) {
 export default async function ContentReviewPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect('/auth/signin?callbackUrl=/dashboard/content')
-  const rows = await prisma.contentDraftPackage.findMany({
+  const storedRows = await prisma.contentDraftPackage.findMany({
     orderBy: { reviewedAt: 'desc' },
-    take: 30,
+    take: 100,
   })
+  const rows = Array.from(
+    new Map(storedRows.map((row) => [row.sourcePayloadHash, row])).values(),
+  ).slice(0, 30)
   return (
     <main style={{ maxWidth: 960, margin: '40px auto', padding: 16 }}>
       <h1>Content review queue</h1>
