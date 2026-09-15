@@ -106,6 +106,11 @@ export default function Header() {
               NFL Models
             </A>
           )}
+          {authed && (
+            <A href="/dashboard/content" $active={pathname === '/dashboard/content'} aria-current={pathname === '/dashboard/content' ? 'page' : undefined}>
+              Content Review
+            </A>
+          )}
           <A href={href('leaderboard')} $active={isActive('leaderboard')} aria-current={isActive('leaderboard') ? 'page' : undefined}>
             Leaderboard
           </A>

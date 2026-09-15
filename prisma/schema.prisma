@@ -29,6 +29,25 @@ model MlbMarketSnapshot {
   @@index([modelPayloadHash])
 }
 
+model ContentDraftPackage {
+  id                String   @id @default(cuid())
+  packageHash       String   @unique @db.Char(64)
+  sourcePayloadHash String   @db.Char(64)
+  sport             String
+  slateDate         String
+  reviewedAt        DateTime
+  releaseStatus     String
+  reviewStatus      String   @default("PENDING_REVIEW")
+  reviewedBy        String?
+  decisionAt        DateTime?
+  payload           Json
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([sport, slateDate, reviewedAt])
+  @@index([sourcePayloadHash])
+}
+
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
