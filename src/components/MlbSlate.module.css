@@ -24,4 +24,11 @@
 .reference { color: #e7c98b; line-height: 1.5; }
 .source { color: #b9c6d6; font-size: .875rem; line-height: 1.5; }
 .empty { padding: 32px 0; line-height: 1.6; }
-@media (max-width: 480px) { .main { padding: 0 16px 32px; } .date { align-items: stretch; } .date label { width: 100%; } .card { padding: 18px; } }
+@media (max-width: 480px) {
+  .main { padding: 0 16px 32px; }
+  .heading h1 { font-size: 1.8rem; }
+  .date { align-items: stretch; width: 100%; }
+  .date label { width: 100%; }
+  .date input, .date button { flex: 1 1 100%; min-height: 44px; }
+  .card { padding: 18px; }
+}

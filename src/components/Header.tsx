@@ -10,6 +10,9 @@ const Bar = styled.header`
   border-bottom: 1px solid rgba(255,255,255,0.08);
   background: rgba(10, 12, 18, 0.6);
   backdrop-filter: blur(6px);
+  position: sticky;
+  top: 0;
+  z-index: 50;
 `
 
 const Inner = styled.div`
@@ -27,10 +30,12 @@ const Brand = styled(Link)`
   letter-spacing: 0.4px;
   text-decoration: none;
   color: white;
+  @media (max-width: 720px) { flex: 1; }
 `
 
 const Grow = styled.div`
   flex: 1;
+  @media (max-width: 720px) { display: none; }
 `
 
 const Nav = styled.nav`
@@ -38,6 +43,15 @@ const Nav = styled.nav`
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
+  @media (max-width: 720px) {
+    order: 3;
+    width: 100%;
+    flex-wrap: nowrap;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: thin;
+  }
 `
 
 const A = styled(Link)<{ $active?: boolean }>`
@@ -48,6 +62,10 @@ const A = styled(Link)<{ $active?: boolean }>`
   background: ${({ $active, theme }) => ($active ? theme.colors.primary : 'transparent')};
   border: 1px solid rgba(255,255,255,0.12);
   opacity: ${({ $active }) => ($active ? 1 : 0.9)};
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
   &:hover { opacity: 1; }
 `
 
@@ -59,6 +77,7 @@ const Button = styled.button`
   color: white;
   font-weight: 700;
   cursor: pointer;
+  min-height: 42px;
   &:hover { opacity: 1 }
 `
 
@@ -73,7 +92,7 @@ export default function Header() {
       <Inner>
         <Brand href={authed ? '/dashboard' : '/'}>QuantSportsClub</Brand>
 
-        <Nav>
+        <Nav aria-label="Primary navigation">
           {authed && (
             <A href="/dashboard" $active={pathname === '/dashboard'} aria-current={pathname === '/dashboard' ? 'page' : undefined}>
               Overview
