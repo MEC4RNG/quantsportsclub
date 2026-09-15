@@ -20,6 +20,9 @@ const Row = styled.div`
 const Label = styled.label`
   font-weight: 600; opacity: .9;
 `
+const Field = styled.label`
+  display: grid; gap: 6px; font-weight: 600;
+`
 const Input = styled.input`
   padding: 10px 12px; border-radius: 10px;
   border: 1px solid rgba(255,255,255,.15);
@@ -48,7 +51,11 @@ const Button = styled.button<{variant?: 'primary'|'ghost'}>`
   pointer-events: ${({ disabled }) => disabled ? 'none' : 'auto'};
 `
 const Small = styled.p`
-  margin: 4px 0 0; font-size: 13px; opacity: .75;
+  margin: 4px 0 0; font-size: 13px; opacity: .8;
+`
+const Help = styled(Small)`
+  grid-column: 2;
+  @media (max-width: 640px) { grid-column: 1; }
 `
 const KPIs = styled.div`
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
@@ -166,11 +173,11 @@ export default function BetslipPage() {
 
   return (
     <Wrap>
-      <h2>Betslip</h2>
+      <h1>Betslip</h1>
 
       <Row>
-        <Label>Sport</Label>
-        <Select value={sport} onChange={(e) => setSport(e.target.value)}>
+        <Label htmlFor="bet-sport">Sport</Label>
+        <Select id="bet-sport" value={sport} onChange={(e) => setSport(e.target.value)}>
           {['NBA','NFL','MLB','NHL','NCAAB','NCAAF','Soccer'].map(s => (
             <option key={s} value={s}>{s}</option>
           ))}
@@ -178,8 +185,8 @@ export default function BetslipPage() {
       </Row>
 
       <Row>
-        <Label>Market</Label>
-        <Select value={market} onChange={(e) => setMarket(e.target.value)}>
+        <Label htmlFor="bet-market">Market</Label>
+        <Select id="bet-market" value={market} onChange={(e) => setMarket(e.target.value)}>
           {['Spread','Moneyline','Total','Prop'].map(m => (
             <option key={m} value={m}>{m}</option>
           ))}
@@ -187,8 +194,9 @@ export default function BetslipPage() {
       </Row>
 
       <Row>
-        <Label>Pick</Label>
+        <Label htmlFor="bet-pick">Pick</Label>
         <Input
+          id="bet-pick"
           placeholder="LAL -3.5"
           value={pick}
           onChange={(e) => setPick(e.target.value)}
@@ -196,9 +204,12 @@ export default function BetslipPage() {
       </Row>
 
       <Row>
-        <Label>Odds (Book / Fair)</Label>
-        <Grid2>
-          <Input
+        <Label as="span" id="odds-label">Odds</Label>
+        <Grid2 role="group" aria-labelledby="odds-label" aria-describedby="odds-help">
+          <Field>
+            Book odds
+            <Input
+              aria-label="Book odds"
             type="text"
             inputMode="numeric"
             pattern="[-+]?[0-9]*"
@@ -210,8 +221,12 @@ export default function BetslipPage() {
                 setBookOddsInput(v)
               }
             }}
-          />
-          <Input
+            />
+          </Field>
+          <Field>
+            Fair odds
+            <Input
+              aria-label="Fair odds"
             type="text"
             inputMode="numeric"
             pattern="[-+]?[0-9]*"
@@ -223,14 +238,17 @@ export default function BetslipPage() {
                 setFairOddsInput(v)
               }
             }}
-          />
+            />
+          </Field>
         </Grid2>
-        <Small>Enter American odds. You can type “-” or “+” while editing.</Small>
+        <Help id="odds-help">Enter American odds. You can type “-” or “+” while editing.</Help>
       </Row>
 
       <Row>
-        <Label>Stake (units)</Label>
+        <Label htmlFor="stake-units">Stake (units)</Label>
         <Input
+          id="stake-units"
+          aria-describedby="stake-help"
           type="text"
           inputMode="decimal"
           pattern="[-+]?[0-9]*[.]?[0-9]*"
@@ -243,10 +261,10 @@ export default function BetslipPage() {
             }
           }}
         />
-        <Small>We’ll compute edge and Kelly from the odds; you choose stake.</Small>
+        <Help id="stake-help">We’ll compute edge and Kelly from the odds; you choose stake.</Help>
       </Row>
 
-      <KPIs>
+      <KPIs aria-live="polite" aria-label="Calculated bet metrics">
         <Card><H>Implied (book)</H><V>{fmt(implied !== null ? implied*100 : null, 2)}%</V></Card>
         <Card><H>Fair (model)</H><V>{fmt(fair !== null ? fair*100 : null, 2)}%</V></Card>
         <Card><H>Edge</H><V>{fmt(edgePct !== null ? edgePct*100 : null, 2)}%</V></Card>
@@ -254,19 +272,19 @@ export default function BetslipPage() {
       </KPIs>
 
       {msg && (
-        <Small style={{ color: msg.kind === 'ok' ? '#7CFC9E' : '#ff8d8d' }}>
+        <Small role={msg.kind === 'ok' ? 'status' : 'alert'} style={{ color: msg.kind === 'ok' ? '#7CFC9E' : '#ff8d8d' }}>
           {msg.text}
         </Small>
       )}
 
       <ButtonRow>
-        <Button variant="ghost" onClick={() => {
+        <Button type="button" variant="ghost" onClick={() => {
           setBookOddsInput(''); setFairOddsInput(''); setPick(''); setStakeUnitsInput('1')
           setMsg(null)
         }}>
           Clear
         </Button>
-        <Button onClick={onSubmit} disabled={!canSubmit || submitting}>
+        <Button type="button" onClick={onSubmit} disabled={!canSubmit || submitting}>
           {submitting ? 'Submitting…' : 'Submit Bet'}
         </Button>
       </ButtonRow>

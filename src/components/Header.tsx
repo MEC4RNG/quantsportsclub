@@ -67,6 +67,7 @@ const A = styled(Link)<{ $active?: boolean }>`
   align-items: center;
   white-space: nowrap;
   &:hover { opacity: 1; }
+  &:focus-visible { opacity: 1; }
 `
 
 const Button = styled.button`
@@ -79,6 +80,7 @@ const Button = styled.button`
   cursor: pointer;
   min-height: 42px;
   &:hover { opacity: 1 }
+  &:focus-visible { opacity: 1 }
 `
 
 export default function Header() {

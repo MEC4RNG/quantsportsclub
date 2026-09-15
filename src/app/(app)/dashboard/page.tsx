@@ -109,9 +109,10 @@ export default async function DashboardPage() {
         </nav>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <caption className="sr-only">Recent bankroll activity</caption>
             <thead><tr>
-              <th align="left">Recent bankroll activity</th><th align="left">Kind</th>
-              <th align="right">Units</th><th align="left">Notes</th>
+              <th scope="col" align="left">Date</th><th scope="col" align="left">Kind</th>
+              <th scope="col" align="right">Units</th><th scope="col" align="left">Notes</th>
             </tr></thead>
             <tbody>
               {bankroll.map((row) => <tr key={row.id}>
