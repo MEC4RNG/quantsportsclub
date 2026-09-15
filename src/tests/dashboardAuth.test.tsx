@@ -1,13 +1,16 @@
 import React from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { session, redirect, edgeFindMany, bankrollFindMany } = vi.hoisted(() => ({
+const { session, redirect, mlbFindFirst, nflFindFirst, bankrollFindMany, contentCount } = vi.hoisted(() => ({
   session: vi.fn(),
   redirect: vi.fn((url: string) => {
     throw new Error(`REDIRECT ${url}`)
   }),
-  edgeFindMany: vi.fn(),
+  mlbFindFirst: vi.fn(),
+  nflFindFirst: vi.fn(),
   bankrollFindMany: vi.fn(),
+  contentCount: vi.fn(),
 }))
 
 vi.mock('next-auth', () => ({ getServerSession: session }))
@@ -15,8 +18,10 @@ vi.mock('next/navigation', () => ({ redirect }))
 vi.mock('@/lib/auth', () => ({ authOptions: {} }))
 vi.mock('@/lib/db', () => ({
   prisma: {
-    edge: { findMany: edgeFindMany },
+    mlbGsimResult: { findFirst: mlbFindFirst },
+    nflGsimResult: { findFirst: nflFindFirst },
     bankrollEntry: { findMany: bankrollFindMany },
+    contentDraftPackage: { count: contentCount },
   },
 }))
 
@@ -29,8 +34,10 @@ describe('dashboard authentication', () => {
   beforeEach(() => {
     session.mockReset()
     redirect.mockClear()
-    edgeFindMany.mockReset()
+    mlbFindFirst.mockReset().mockResolvedValue(null)
+    nflFindFirst.mockReset().mockResolvedValue(null)
     bankrollFindMany.mockReset()
+    contentCount.mockReset().mockResolvedValue(0)
   })
 
   it('redirects anonymous dashboard requests before rendering children', async () => {
@@ -47,13 +54,25 @@ describe('dashboard authentication', () => {
 
   it('queries bankroll entries only for the signed-in user', async () => {
     session.mockResolvedValue({ user: { id: 'user-1' } })
-    edgeFindMany.mockResolvedValue([])
     bankrollFindMany.mockResolvedValue([])
-    await DashboardPage()
+    const page = await DashboardPage()
+    const html = renderToStaticMarkup(page)
+    expect(html).toContain('Model operations')
+    expect(html).toContain('MLB GSIM')
+    expect(html).toContain('NFL GSIM')
     expect(bankrollFindMany).toHaveBeenCalledWith({
       where: { userId: 'user-1' },
       orderBy: { createdAt: 'desc' },
-      take: 10,
+      take: 5,
     })
+  })
+
+  it('shows content workload only to configured reviewers', async () => {
+    session.mockResolvedValue({ user: { id: 'user-1', contentReviewer: true } })
+    bankrollFindMany.mockResolvedValue([])
+    contentCount.mockResolvedValue(2)
+    const html = renderToStaticMarkup(await DashboardPage())
+    expect(html).toContain('2 pending reviews')
+    expect(contentCount).toHaveBeenCalledWith({ where: { reviewStatus: 'PENDING_REVIEW' } })
   })
 })

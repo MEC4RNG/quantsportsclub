@@ -13,13 +13,13 @@ const Wrap = styled.main`
 export default function PicksMarketingPage() {
   return (
     <Wrap>
-      <h2>Public Picks Preview</h2>
+      <h2>Model outputs</h2>
       <p>
-        Teaser for recent picks and methodology. Sign in to view the full feed with filters
-        and model attributions.
+        QSC does not currently publish a public picks feed. Signed-in members can review the
+        latest MLB and NFL model snapshots with their readiness labels intact.
       </p>
       <p>
-        Go to <Link href="/dashboard/picks">/dashboard/picks</Link> for the authenticated version.
+        <Link href="/dashboard">Open the QSC workspace</Link>.
       </p>
     </Wrap>
   )

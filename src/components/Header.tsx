@@ -62,49 +62,41 @@ const Button = styled.button`
   &:hover { opacity: 1 }
 `
 
-function join(...parts: string[]) {
-  return parts
-    .map((p) => p.replace(/(^\/+|\/+$)/g, ''))
-    .filter(Boolean)
-    .join('/')
-}
-
 export default function Header() {
   const { data, status } = useSession()
   const pathname = usePathname()
 
   const authed = status === 'authenticated'
   const contentReviewer = (data?.user as { contentReviewer?: boolean } | undefined)?.contentReviewer === true
-  // Helper that builds the right href depending on auth
-  const href = (slug: string) => '/' + (authed ? join('dashboard', slug) : join(slug))
-
-  // Active checker that works for both public and dashboard paths
-  const isActive = (slug: string) => {
-    const pub = '/' + join(slug)
-    const app = '/' + join('dashboard', slug)
-    return pathname === pub || pathname === app
-  }
-
   return (
     <Bar>
       <Inner>
         <Brand href={authed ? '/dashboard' : '/'}>QuantSportsClub</Brand>
 
         <Nav>
-          <A href={href('picks')} $active={isActive('picks')} aria-current={isActive('picks') ? 'page' : undefined}>
-            Picks
-          </A>
-          <A href={href('stats')} $active={isActive('stats')} aria-current={isActive('stats') ? 'page' : undefined}>
-            Stats
-          </A>
+          {authed && (
+            <A href="/dashboard" $active={pathname === '/dashboard'} aria-current={pathname === '/dashboard' ? 'page' : undefined}>
+              Overview
+            </A>
+          )}
+          {!authed && (
+            <A href="/picks" $active={pathname === '/picks'} aria-current={pathname === '/picks' ? 'page' : undefined}>
+              Picks
+            </A>
+          )}
+          {!authed && (
+            <A href="/stats" $active={pathname === '/stats'} aria-current={pathname === '/stats' ? 'page' : undefined}>
+              Stats
+            </A>
+          )}
           {authed && (
             <A href="/dashboard/mlb" $active={pathname === '/dashboard/mlb'} aria-current={pathname === '/dashboard/mlb' ? 'page' : undefined}>
-              MLB Models
+              MLB
             </A>
           )}
           {authed && (
             <A href="/dashboard/nfl" $active={pathname === '/dashboard/nfl'} aria-current={pathname === '/dashboard/nfl' ? 'page' : undefined}>
-              NFL Models
+              NFL
             </A>
           )}
           {contentReviewer && (
@@ -112,9 +104,11 @@ export default function Header() {
               Content Review
             </A>
           )}
-          <A href={href('leaderboard')} $active={isActive('leaderboard')} aria-current={isActive('leaderboard') ? 'page' : undefined}>
-            Leaderboard
-          </A>
+          {!authed && (
+            <A href="/leaderboard" $active={pathname === '/leaderboard'} aria-current={pathname === '/leaderboard' ? 'page' : undefined}>
+              Leaderboard
+            </A>
+          )}
           {authed && (
             <A href="/exposure" $active={pathname === '/exposure'} aria-current={pathname === '/exposure' ? 'page' : undefined}>
               Exposure

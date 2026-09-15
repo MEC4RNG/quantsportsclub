@@ -15,10 +15,11 @@ export default function StatsMarketingPage() {
     <Wrap>
       <h2>Performance Stats</h2>
       <p>
-        Public snapshot of performance. Sign in for full drill-downs by sport, market, and time window.
+        Auditable MLB and NFL performance reports are available in the signed-in workspace.
+        They show coverage and sample limitations alongside every result.
       </p>
       <p>
-        Go to <Link href="/dashboard/stats">/dashboard/stats</Link> for the authenticated version.
+        <Link href="/dashboard">Open the QSC workspace</Link>.
       </p>
     </Wrap>
   )
