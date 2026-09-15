@@ -15,11 +15,11 @@ export default function LeaderboardMarketingPage() {
     <Wrap>
       <h2>Leaderboard</h2>
       <p>
-        Public teaser for leader rankings. Sign in to view the full interactive board.
+        QSC does not publish a model or handicapper leaderboard yet. Current model reports use
+        prospective results and frozen baselines instead of promotional rankings.
       </p>
       <p>
-        Go to <Link href="/dashboard/leaderboard">/dashboard/leaderboard</Link> for the
-        authenticated version.
+        <Link href="/dashboard">Open the QSC workspace</Link>.
       </p>
     </Wrap>
   )

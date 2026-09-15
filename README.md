@@ -47,4 +47,27 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) and our [Code of Conduct](CODE_OF
 
 ## Security
 See [SECURITY.md](SECURITY.md) for how to report vulnerabilities.
+
+## NFL GSIM results integration
+
+The private NFL GSIM service may send only the narrow `qsc.nfl_gsim.results.v1`
+results contract to `POST /api/integrations/nfl-gsim/results`. Set a strong
+`NFL_GSIM_INGESTION_SECRET` in the deployment secret store and send it as an
+`Authorization: Bearer …` credential. The endpoint fails closed when the secret
+is absent, strictly rejects fields outside the published schema, verifies the
+exporter's canonical SHA-256 payload hash, and idempotently stores accepted
+contracts by that hash.
+
+Automated delivery checks can read the normalized record with
+`GET /api/integrations/nfl-gsim/results?payload_hash=<sha256>` using the same
+Bearer credential. The response is never cached and contains only the exact
+record's readiness fields, per-game state, and game, blocked-game, and player
+projection counts. Invalid credentials fail before any database query.
+
+Never place that secret in a `NEXT_PUBLIC_*` variable or commit it. Never send or
+store private model code, fitted artifacts, training data, retained trials,
+credentials, or raw run data in this public repository or its database. Apply
+the included Prisma migration only through the normal reviewed deployment
+process. Validated results are presented at `/dashboard/nfl` with their readiness,
+provisional, blocked-game, and decision-use labels intact.
 # quantsportsclub

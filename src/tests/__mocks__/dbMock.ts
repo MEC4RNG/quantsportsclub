@@ -80,6 +80,7 @@ export const prisma = {
   bet: {
     findMany: async ({ where, orderBy, take }: any = {}) => {
       let rows = bets
+      if (where?.userId) rows = rows.filter(b => b.userId === where.userId)
       if (where?.status) rows = rows.filter(b => b.status === where.status)
       if (orderBy?.[0]?.createdAt === 'desc') rows = sortDescByCreated(rows)
       if (Number.isFinite(take)) rows = rows.slice(0, take)
@@ -88,12 +89,24 @@ export const prisma = {
     findUnique: async ({ where }: any) => {
       return bets.find(b => b.id === where.id) ?? null
     },
+    findUniqueOrThrow: async ({ where }: any) => {
+      const bet = bets.find(b => b.id === where.id)
+      if (!bet) throw new Error('Bet not found')
+      return bet
+    },
+    findFirst: async ({ where }: any) => {
+      return bets.find(b =>
+        (!where?.id || b.id === where.id) &&
+        (!where?.userId || b.userId === where.userId) &&
+        (!where?.status || b.status === where.status)
+      ) ?? null
+    },
     create: async ({ data }: any) => {
       const bet = {
         id: nid(),
         createdAt: now(),
         updatedAt: now(),
-        userId: data.userId,
+        userId: data.userId ?? data.user?.connect?.id ?? data.user?.connectOrCreate?.where?.id,
         sport: data.sport,
         league: data.league ?? null,
         eventId: data.eventId ?? null,
@@ -116,6 +129,16 @@ export const prisma = {
       const updated = { ...bets[i], ...data, updatedAt: now() }
       bets[i] = updated
       return updated
+    },
+    updateMany: async ({ where, data }: any) => {
+      const i = bets.findIndex(b =>
+        (!where?.id || b.id === where.id) &&
+        (!where?.userId || b.userId === where.userId) &&
+        (!where?.status || b.status === where.status)
+      )
+      if (i === -1) return { count: 0 }
+      bets[i] = { ...bets[i], ...data, updatedAt: now() }
+      return { count: 1 }
     },
     aggregate: async ({ where, _sum }: any) => {
       let rows = bets

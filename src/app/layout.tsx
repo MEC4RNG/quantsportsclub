@@ -14,8 +14,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <ThemeClient>
           <Providers>
+            <a className="skip-link" href="#main-content">
+              Skip to main content
+            </a>
             <Header />
-            {children}
+            <div id="main-content" tabIndex={-1}>
+              {children}
+            </div>
           </Providers>
         </ThemeClient>
       </body>

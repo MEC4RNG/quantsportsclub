@@ -9,6 +9,10 @@ import {
   type ByMarketRow,
 } from '@/lib/exposure'
 import { ExposureCharts } from '@/components/charts/ExposureCharts'
+import { getSessionUserId } from '@/lib/sessionUser'
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import styles from './exposure.module.css'
 
 function fmt(n: number) {
   const s = n.toFixed(2)
@@ -21,6 +25,8 @@ export default async function ExposurePage({
   // Next.js 15: searchParams comes in as a Promise
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
+  const userId = await getSessionUserId()
+  if (!userId) redirect('/auth/signin?callbackUrl=/exposure')
   const sp = await searchParams
   const daysParam = typeof sp?.days === 'string' ? Number(sp.days) : undefined
   const days =
@@ -29,71 +35,68 @@ export default async function ExposurePage({
       : undefined
 
   const [overview, analytics]: [ExposureOverview, ExposureAnalytics] = await Promise.all([
-    getExposureOverview(days),
-    getExposureAnalytics(days),
+    getExposureOverview(userId, days),
+    getExposureAnalytics(userId, days),
   ])
 
   return (
-    <main style={{ maxWidth: 1024, margin: '40px auto', padding: 16 }}>
+    <main className={styles.main}>
       <h1>Exposure</h1>
-      <p style={{ opacity: 0.8 }}>
-        Snapshot of pending risk and realized PnL{days ? ` for the last ${days} days` : ''}.{' '}
-        Use <code>?days=30</code> to filter.
+      <p className={styles.intro}>
+        Pending risk and realized PnL{days ? ` for the last ${days} days` : ' across all recorded bets'}.
       </p>
-
-      <section
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 16,
-          marginTop: 16,
-        }}
-      >
-        <div
-          style={{
-            padding: 16,
-            border: '1px solid rgba(255,255,255,0.12)',
-            borderRadius: 12,
-          }}
+      <nav className={styles.windows} aria-label="Performance window">
+        {[7, 30, 90].map((window) => (
+          <Link
+            key={window}
+            href={`/exposure?days=${window}`}
+            className={days === window ? styles.active : undefined}
+            aria-current={days === window ? 'page' : undefined}
+          >
+            {window} days
+          </Link>
+        ))}
+        <Link
+          href="/exposure"
+          className={!days ? styles.active : undefined}
+          aria-current={!days ? 'page' : undefined}
         >
-          <h3 style={{ marginTop: 0 }}>Pending Exposure</h3>
-          <div style={{ fontSize: 28, fontWeight: 800 }}>
+          All time
+        </Link>
+      </nav>
+
+      <section className={styles.summary} aria-label="Exposure summary">
+        <article className={styles.card}>
+          <h2>Pending exposure</h2>
+          <div className={styles.value}>
             {overview.pendingTotal.toFixed(2)} units
           </div>
-          <div style={{ opacity: 0.7, fontSize: 12 }}>
-            Unsettled stake currently at risk
-          </div>
-        </div>
+          <p className={styles.help}>Unsettled stake currently at risk</p>
+        </article>
 
-        <div
-          style={{
-            padding: 16,
-            border: '1px solid rgba(255,255,255,0.12)',
-            borderRadius: 12,
-          }}
-        >
-          <h3 style={{ marginTop: 0 }}>Realized PnL</h3>
+        <article className={styles.card}>
+          <h2>Realized PnL</h2>
           <div
+            className={styles.value}
             style={{
-              fontSize: 28,
-              fontWeight: 800,
               color: overview.pnlTotal >= 0 ? '#7ee787' : '#ff7b72',
             }}
           >
             {fmt(overview.pnlTotal)} units
           </div>
-          <div style={{ opacity: 0.7, fontSize: 12 }}>Settled profit & loss</div>
-        </div>
+          <p className={styles.help}>Settled profit and loss</p>
+        </article>
       </section>
 
-      <section style={{ marginTop: 28 }}>
-        <h2>By Sport</h2>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <section className={styles.section}>
+        <h2>By sport</h2>
+        <div className={styles.tableWrap}><table className={styles.table}>
+          <caption className="sr-only">Exposure and realized PnL by sport</caption>
           <thead>
             <tr>
-              <th align="left">Sport</th>
-              <th align="right">Pending</th>
-              <th align="right">PnL</th>
+              <th scope="col" align="left">Sport</th>
+              <th scope="col" align="right">Pending</th>
+              <th scope="col" align="right">PnL</th>
             </tr>
           </thead>
           <tbody>
@@ -111,23 +114,24 @@ export default async function ExposurePage({
             ))}
             {overview.bySport.length === 0 && (
               <tr>
-                <td colSpan={3} style={{ opacity: 0.7 }}>
+                <td colSpan={3} className={styles.empty}>
                   No data yet.
                 </td>
               </tr>
             )}
           </tbody>
-        </table>
+        </table></div>
       </section>
 
-      <section style={{ marginTop: 28 }}>
-        <h2>By Market</h2>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <section className={styles.section}>
+        <h2>By market</h2>
+        <div className={styles.tableWrap}><table className={styles.table}>
+          <caption className="sr-only">Exposure and realized PnL by market</caption>
           <thead>
             <tr>
-              <th align="left">Market</th>
-              <th align="right">Pending</th>
-              <th align="right">PnL</th>
+              <th scope="col" align="left">Market</th>
+              <th scope="col" align="right">Pending</th>
+              <th scope="col" align="right">PnL</th>
             </tr>
           </thead>
           <tbody>
@@ -145,16 +149,16 @@ export default async function ExposurePage({
             ))}
             {overview.byMarket.length === 0 && (
               <tr>
-                <td colSpan={3} style={{ opacity: 0.7 }}>
+                <td colSpan={3} className={styles.empty}>
                   No data yet.
                 </td>
               </tr>
             )}
           </tbody>
-        </table>
+        </table></div>
       </section>
 
-      <section style={{ marginTop: 28 }}>
+      <section className={styles.section}>
         <h2>Trends</h2>
         <ExposureCharts
           daily={analytics.daily}

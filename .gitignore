@@ -1,5 +1,6 @@
 # Node / Next.js
 node_modules
+__pycache__/
 .next
 out
 dist
@@ -13,3 +14,4 @@ yarn-error.log*
 .idea
 .vscode/*
 !.vscode/extensions.json
+.vercel

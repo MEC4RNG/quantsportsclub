@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 import { parse } from 'csv-parse/sync'
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
+import { requireApiKey } from '@/lib/authz'
 
 const Row = z.object({
   userId: z.string(),
@@ -12,7 +14,9 @@ const Row = z.object({
 })
 type RowT = z.infer<typeof Row>
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const auth = await requireApiKey(req)
+  if (!auth.ok) return auth.res
   const text = await req.text()
   if (!text || text.trim().length === 0) {
     return NextResponse.json({ error: 'No CSV provided' }, { status: 400 })

@@ -1,0 +1,26 @@
+.main { max-width: 960px; margin: 0 auto; padding: 32px 20px 48px; }
+.back { color: #7dd3fc; font-weight: 700; }
+.main h1 { margin: 18px 0 8px; font-size: 2rem; }
+.intro { line-height: 1.6; color: #cbd5e1; max-width: 720px; }
+.card { border: 1px solid #334155; border-radius: 14px; padding: 20px; margin: 20px 0; background: #111827; min-width: 0; }
+.cardHeader { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+.cardHeader h2 { margin: 0; }
+.status { border: 1px solid #475569; border-radius: 999px; padding: 5px 10px; font-size: .8rem; font-weight: 800; letter-spacing: .03em; }
+.meta { color: #cbd5e1; line-height: 1.55; }
+.hash { display: block; overflow-wrap: anywhere; margin-top: 6px; font-size: .8rem; }
+.blocker { background: #2b2111; border-left: 3px solid #f6c85f; padding: 12px 14px; line-height: 1.5; }
+.post { margin: 24px 0; border-top: 1px solid #334155; padding-top: 18px; }
+.copy { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.6; background: #0b1220; border-radius: 10px; padding: 14px; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.actions button { min-height: 44px; padding: 10px 16px; border-radius: 8px; border: 1px solid #64748b; font: inherit; font-weight: 800; cursor: pointer; }
+.actions button:first-of-type { background: #85bb65; color: #0b1220; border-color: #85bb65; }
+.actions button:last-of-type { background: transparent; color: #e5e7eb; }
+.actions button:disabled { cursor: not-allowed; opacity: .45; }
+.empty { border: 1px dashed #475569; border-radius: 12px; padding: 24px; color: #cbd5e1; }
+@media (max-width: 560px) {
+  .main { padding: 24px 16px 36px; }
+  .main h1 { font-size: 1.7rem; }
+  .card { padding: 16px; }
+  .actions { display: grid; grid-template-columns: 1fr; }
+  .actions button { width: 100%; }
+}
