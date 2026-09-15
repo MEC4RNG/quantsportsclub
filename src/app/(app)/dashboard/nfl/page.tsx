@@ -137,6 +137,9 @@ export default async function NflResultsPage() {
               style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 16 }}
               aria-label="NFL result sections"
             >
+              <Link href="/dashboard/nfl/performance" style={{ color: '#8fc7ff' }}>
+                Model performance
+              </Link>
               <a href="#games" style={{ color: '#8fc7ff' }}>
                 Games
               </a>
