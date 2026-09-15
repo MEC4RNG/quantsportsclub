@@ -19,7 +19,7 @@ export default async function DashboardPage() {
   if (!user?.id) redirect('/auth/signin?callbackUrl=/dashboard')
   const contentReviewer = user.contentReviewer === true
 
-  const [latestMlb, latestNfl, bankroll, pendingReviews] = await Promise.all([
+  const [latestMlb, latestNfl, bankroll, pendingReviewSources] = await Promise.all([
     prisma.mlbGsimResult.findFirst({
       orderBy: [{ generatedAt: 'desc' }, { receivedAt: 'desc' }],
       select: { slateDate: true, generatedAt: true, payload: true },
@@ -35,9 +35,14 @@ export default async function DashboardPage() {
       where: { userId: user.id }, orderBy: { createdAt: 'desc' }, take: 5,
     }),
     contentReviewer
-      ? prisma.contentDraftPackage.count({ where: { reviewStatus: 'PENDING_REVIEW' } })
+      ? prisma.contentDraftPackage.findMany({
+          where: { reviewStatus: 'PENDING_REVIEW' },
+          distinct: ['sourcePayloadHash'],
+          select: { sourcePayloadHash: true },
+        })
       : Promise.resolve(null),
   ])
+  const pendingReviews = pendingReviewSources?.length ?? null
 
   const mlbPayload = mlbGsimResultsSchema.safeParse(latestMlb?.payload)
   const mlbProjected = mlbPayload.success
@@ -50,7 +55,7 @@ export default async function DashboardPage() {
       <p style={{ margin: 0, color: '#8aa0b6', fontWeight: 700 }}>QSC workspace</p>
       <h1 style={{ margin: '6px 0 8px' }}>Model operations</h1>
       <p style={{ marginTop: 0, maxWidth: 720, opacity: 0.8 }}>
-        Current private model snapshots, performance evidence, content review, and personal tracking.
+        Latest accepted private model snapshots, performance evidence, content review, and personal tracking.
       </p>
 
       <section aria-label="Model status" style={{
@@ -61,7 +66,7 @@ export default async function DashboardPage() {
           <p style={{ color: '#8aa0b6', margin: 0, fontWeight: 700 }}>MLB GSIM</p>
           <h2 style={{ margin: '8px 0' }}>{latestMlb?.slateDate ?? 'No snapshot received'}</h2>
           {mlbPayload.success ? (
-            <p>{mlbProjected} current pregame projections · {mlbUnavailable} unavailable</p>
+            <p>{mlbProjected} pregame model projections in snapshot · {mlbUnavailable} unavailable</p>
           ) : <p style={{ opacity: 0.75 }}>Waiting for a validated MLB snapshot.</p>}
           {latestMlb && <p style={{ opacity: 0.65, fontSize: 13 }}>Generated {latestMlb.generatedAt.toLocaleString()}</p>}
           <nav style={links} aria-label="MLB tools">

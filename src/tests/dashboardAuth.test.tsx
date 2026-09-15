@@ -2,7 +2,7 @@ import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { session, redirect, mlbFindFirst, nflFindFirst, bankrollFindMany, contentCount } = vi.hoisted(() => ({
+const { session, redirect, mlbFindFirst, nflFindFirst, bankrollFindMany, contentFindMany } = vi.hoisted(() => ({
   session: vi.fn(),
   redirect: vi.fn((url: string) => {
     throw new Error(`REDIRECT ${url}`)
@@ -10,7 +10,7 @@ const { session, redirect, mlbFindFirst, nflFindFirst, bankrollFindMany, content
   mlbFindFirst: vi.fn(),
   nflFindFirst: vi.fn(),
   bankrollFindMany: vi.fn(),
-  contentCount: vi.fn(),
+  contentFindMany: vi.fn(),
 }))
 
 vi.mock('next-auth', () => ({ getServerSession: session }))
@@ -21,7 +21,7 @@ vi.mock('@/lib/db', () => ({
     mlbGsimResult: { findFirst: mlbFindFirst },
     nflGsimResult: { findFirst: nflFindFirst },
     bankrollEntry: { findMany: bankrollFindMany },
-    contentDraftPackage: { count: contentCount },
+    contentDraftPackage: { findMany: contentFindMany },
   },
 }))
 
@@ -37,7 +37,7 @@ describe('dashboard authentication', () => {
     mlbFindFirst.mockReset().mockResolvedValue(null)
     nflFindFirst.mockReset().mockResolvedValue(null)
     bankrollFindMany.mockReset()
-    contentCount.mockReset().mockResolvedValue(0)
+    contentFindMany.mockReset().mockResolvedValue([])
   })
 
   it('redirects anonymous dashboard requests before rendering children', async () => {
@@ -70,9 +70,13 @@ describe('dashboard authentication', () => {
   it('shows content workload only to configured reviewers', async () => {
     session.mockResolvedValue({ user: { id: 'user-1', contentReviewer: true } })
     bankrollFindMany.mockResolvedValue([])
-    contentCount.mockResolvedValue(2)
+    contentFindMany.mockResolvedValue([{ sourcePayloadHash: 'a' }, { sourcePayloadHash: 'b' }])
     const html = renderToStaticMarkup(await DashboardPage())
     expect(html).toContain('2 pending reviews')
-    expect(contentCount).toHaveBeenCalledWith({ where: { reviewStatus: 'PENDING_REVIEW' } })
+    expect(contentFindMany).toHaveBeenCalledWith({
+      where: { reviewStatus: 'PENDING_REVIEW' },
+      distinct: ['sourcePayloadHash'],
+      select: { sourcePayloadHash: true },
+    })
   })
 })
