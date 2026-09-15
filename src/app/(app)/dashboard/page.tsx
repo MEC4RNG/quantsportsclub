@@ -1,15 +1,25 @@
 export const dynamic = 'force-dynamic'
 
 import { prisma } from '@/lib/db'
+import { getServerSession } from 'next-auth'
+import { redirect } from 'next/navigation'
+import { authOptions } from '@/lib/auth'
 
 // Infer row types directly from Prisma queries (no @prisma/client type imports needed)
 type EdgeRow = Awaited<ReturnType<typeof prisma.edge.findMany>>[number]
 type BankrollRow = Awaited<ReturnType<typeof prisma.bankrollEntry.findMany>>[number]
 
 export default async function DashboardPage() {
+  const session = await getServerSession(authOptions)
+  const userId = (session?.user as { id?: string } | undefined)?.id
+  if (!userId) redirect('/auth/signin?callbackUrl=/dashboard')
   const [edges, bankroll] = await Promise.all([
     prisma.edge.findMany({ orderBy: { createdAt: 'desc' }, take: 10 }),
-    prisma.bankrollEntry.findMany({ orderBy: { createdAt: 'desc' }, take: 10 }),
+    prisma.bankrollEntry.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    }),
   ])
 
   return (
