@@ -6,6 +6,7 @@ import { NextRequest } from 'next/server'
 
 const { sessionUserId } = vi.hoisted(() => ({ sessionUserId: vi.fn() }))
 vi.mock('@/lib/sessionUser', () => ({ getSessionUserId: sessionUserId }))
+vi.mock('@/lib/db', () => import('@/tests/__mocks__/dbMock'))
 
 // ---- helpers ----
 
@@ -118,5 +119,31 @@ describe('bets API', () => {
     expect(settleRes.status).toBe(200)
     const settled = await settleRes.json()
     expect(settled.status).toBe('win')
+  })
+
+  it('stores probability edge in percentage points', async () => {
+    const response = await POST_BETS(
+      req('/api/bets', {
+        method: 'POST',
+        body: json({
+          sport: 'NFL', pick: 'BUF ML', stakeUnits: 1, bookOdds: -110, fairOdds: -105,
+        }),
+        ip: '6.6.6.6',
+      }),
+    )
+    expect(response.status).toBe(201)
+    const created = await response.json()
+    expect(Number(created.edgePct)).toBeCloseTo(-1.1614, 3)
+  })
+
+  it('rejects zero American odds as invalid input', async () => {
+    const response = await POST_BETS(
+      req('/api/bets', {
+        method: 'POST',
+        body: json({ sport: 'NFL', pick: 'BUF ML', stakeUnits: 1, bookOdds: 0 }),
+        ip: '7.7.7.7',
+      }),
+    )
+    expect(response.status).toBe(400)
   })
 })

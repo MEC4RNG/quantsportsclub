@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import Link from 'next/link'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import styled from 'styled-components'
 
 /* ---------------- UI ---------------- */
@@ -68,6 +69,42 @@ const Card = styled.div`
 `
 const H = styled.div` font-size: 12px; opacity: .7; `
 const V = styled.div` font-size: 18px; font-weight: 700; `
+const Ledger = styled.section`
+  margin-top: 12px; border-top: 1px solid rgba(255,255,255,.12); padding-top: 20px;
+`
+const LedgerHeading = styled.div`
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px;
+  a { color: ${({ theme }) => theme.colors.accent}; font-weight: 700; }
+`
+const TableWrap = styled.div` overflow-x: auto; `
+const Table = styled.table`
+  width: 100%; min-width: 760px; border-collapse: collapse;
+  th, td { padding: 12px 10px; border-bottom: 1px solid rgba(255,255,255,.1); text-align: left; vertical-align: top; }
+  th:nth-child(3), td:nth-child(3), th:nth-child(4), td:nth-child(4), th:nth-child(5), td:nth-child(5) { text-align: right; }
+`
+const SettleActions = styled.div`
+  display: flex; flex-wrap: wrap; gap: 6px;
+`
+const SettleButton = styled.button`
+  min-height: 40px; padding: 7px 10px; border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.24); background: transparent; color: inherit;
+  font: inherit; font-weight: 700; cursor: pointer;
+  &:disabled { cursor: wait; opacity: .55; }
+`
+
+type BetRow = {
+  id: string
+  createdAt: string
+  sport: string
+  market: string | null
+  pick: string
+  stakeUnits: number
+  bookOdds: number | null
+  fairOdds: number | null
+  edgePct: number | string | null
+  status: 'pending' | 'win' | 'loss' | 'void'
+  realizedUnits: number | null
+}
 
 /* --------------- math ---------------- */
 
@@ -131,6 +168,27 @@ export default function BetslipPage() {
   // UI feedback
   const [submitting, setSubmitting] = useState(false)
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
+  const [bets, setBets] = useState<BetRow[]>([])
+  const [loadingBets, setLoadingBets] = useState(true)
+  const [settlingId, setSettlingId] = useState<string | null>(null)
+
+  const loadBets = useCallback(async () => {
+    setLoadingBets(true)
+    try {
+      const res = await fetch('/api/bets', { cache: 'no-store' })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error ?? `HTTP ${res.status}`)
+      setBets(Array.isArray(data) ? data : [])
+    } catch (err) {
+      setMsg({ kind: 'err', text: err instanceof Error ? err.message : 'Could not load bets' })
+    } finally {
+      setLoadingBets(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadBets()
+  }, [loadBets])
 
   async function onSubmit() {
     setMsg(null)
@@ -157,14 +215,36 @@ export default function BetslipPage() {
         const data = await res.json().catch(() => ({}))
         throw new Error(data?.error ?? `HTTP ${res.status}`)
       }
-      setMsg({ kind: 'ok', text: 'Bet submitted ✅' })
+      setMsg({ kind: 'ok', text: 'Bet recorded.' })
       // light reset except odds (often placing series of bets)
       setPick('')
       setStakeUnitsInput('1')
+      await loadBets()
     } catch (err: any) {
       setMsg({ kind: 'err', text: err?.message ?? 'Submit failed' })
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function settleBet(id: string, outcome: 'win' | 'loss' | 'void') {
+    if (!window.confirm(`Record this bet as ${outcome}? This decision cannot be edited here.`)) return
+    setMsg(null)
+    setSettlingId(id)
+    try {
+      const res = await fetch(`/api/bets/${encodeURIComponent(id)}/settle`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ outcome }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error ?? `HTTP ${res.status}`)
+      setMsg({ kind: 'ok', text: `Bet recorded as ${outcome}.` })
+      await loadBets()
+    } catch (err) {
+      setMsg({ kind: 'err', text: err instanceof Error ? err.message : 'Settlement failed' })
+    } finally {
+      setSettlingId(null)
     }
   }
 
@@ -267,7 +347,7 @@ export default function BetslipPage() {
       <KPIs aria-live="polite" aria-label="Calculated bet metrics">
         <Card><H>Implied (book)</H><V>{fmt(implied !== null ? implied*100 : null, 2)}%</V></Card>
         <Card><H>Fair (model)</H><V>{fmt(fair !== null ? fair*100 : null, 2)}%</V></Card>
-        <Card><H>Edge</H><V>{fmt(edgePct !== null ? edgePct*100 : null, 2)}%</V></Card>
+        <Card><H>Probability edge</H><V>{fmt(edgePct !== null ? edgePct*100 : null, 2)} pts</V></Card>
         <Card><H>Kelly fraction</H><V>{fmt(kelly, 3)}</V></Card>
       </KPIs>
 
@@ -288,6 +368,70 @@ export default function BetslipPage() {
           {submitting ? 'Submitting…' : 'Submit Bet'}
         </Button>
       </ButtonRow>
+
+      <Ledger aria-labelledby="recent-bets-heading">
+        <LedgerHeading>
+          <h2 id="recent-bets-heading">Recent bets</h2>
+          <Link href="/exposure">View exposure and PnL →</Link>
+        </LedgerHeading>
+        {loadingBets ? (
+          <p role="status">Loading your bet ledger…</p>
+        ) : bets.length === 0 ? (
+          <p>No bets recorded yet.</p>
+        ) : (
+          <TableWrap>
+            <Table>
+              <caption className="sr-only">Your 50 most recently recorded bets</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Recorded</th>
+                  <th scope="col">Bet</th>
+                  <th scope="col">Book / fair</th>
+                  <th scope="col">Edge</th>
+                  <th scope="col">Stake</th>
+                  <th scope="col">Result</th>
+                  <th scope="col">Settle</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bets.map((bet) => (
+                  <tr key={bet.id}>
+                    <td>{new Date(bet.createdAt).toLocaleString()}</td>
+                    <td><strong>{bet.pick}</strong><br />{bet.sport} · {bet.market ?? 'Other'}</td>
+                    <td>
+                      {bet.bookOdds != null && bet.bookOdds > 0 ? '+' : ''}{bet.bookOdds ?? '—'} /{' '}
+                      {bet.fairOdds != null && bet.fairOdds > 0 ? '+' : ''}{bet.fairOdds ?? '—'}
+                    </td>
+                    <td>{bet.edgePct == null ? '—' : `${Number(bet.edgePct).toFixed(2)} pts`}</td>
+                    <td>{bet.stakeUnits.toFixed(2)}u</td>
+                    <td>
+                      {bet.status === 'pending'
+                        ? 'Pending'
+                        : `${bet.status.charAt(0).toUpperCase()}${bet.status.slice(1)} · ${(bet.realizedUnits ?? 0) > 0 ? '+' : ''}${(bet.realizedUnits ?? 0).toFixed(2)}u`}
+                    </td>
+                    <td>
+                      {bet.status === 'pending' ? (
+                        <SettleActions aria-label={`Settle ${bet.pick}`}>
+                          {(['win', 'loss', 'void'] as const).map((outcome) => (
+                            <SettleButton
+                              key={outcome}
+                              type="button"
+                              disabled={settlingId !== null}
+                              onClick={() => void settleBet(bet.id, outcome)}
+                            >
+                              {outcome.charAt(0).toUpperCase()}{outcome.slice(1)}
+                            </SettleButton>
+                          ))}
+                        </SettleActions>
+                      ) : 'Recorded'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </TableWrap>
+        )}
+      </Ledger>
     </Wrap>
   )
 }

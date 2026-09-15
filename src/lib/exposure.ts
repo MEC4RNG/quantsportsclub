@@ -17,12 +17,13 @@ export type ExposureOverview = {
 
 export async function getExposureOverview(userId: string, days?: number): Promise<ExposureOverview> {
   const since = days ? new Date(Date.now() - days * 86_400_000) : undefined
-  const dateFilter = since ? { gte: since } : undefined
+  const createdFilter = since ? { createdAt: { gte: since } } : {}
+  const settledFilter = since ? { updatedAt: { gte: since } } : {}
 
   // Pending exposure
   const pendingSport = await prisma.bet.groupBy({
     by: ['sport'],
-    where: { userId, status: 'pending', ...(dateFilter ? { createdAt: dateFilter } : {}) },
+    where: { userId, status: 'pending', ...createdFilter },
     _sum: { stakeUnits: true },
   })
   const pendingBySport = new Map<string, number>()
@@ -30,7 +31,7 @@ export async function getExposureOverview(userId: string, days?: number): Promis
 
   const pendingMarket = await prisma.bet.groupBy({
     by: ['market'],
-    where: { userId, status: 'pending', ...(dateFilter ? { createdAt: dateFilter } : {}) },
+    where: { userId, status: 'pending', ...createdFilter },
     _sum: { stakeUnits: true },
   })
   const pendingByMarket = new Map<string, number>()
@@ -39,7 +40,7 @@ export async function getExposureOverview(userId: string, days?: number): Promis
   // Realized PnL (from settled bets)
   const pnlSport = await prisma.bet.groupBy({
     by: ['sport'],
-    where: { userId, status: { in: ['win', 'loss', 'void'] }, ...(dateFilter ? { createdAt: dateFilter } : {}) },
+    where: { userId, status: { in: ['win', 'loss', 'void'] }, ...settledFilter },
     _sum: { realizedUnits: true },
   })
   const pnlBySport = new Map<string, number>()
@@ -47,7 +48,7 @@ export async function getExposureOverview(userId: string, days?: number): Promis
 
   const pnlMarket = await prisma.bet.groupBy({
     by: ['market'],
-    where: { userId, status: { in: ['win', 'loss', 'void'] }, ...(dateFilter ? { createdAt: dateFilter } : {}) },
+    where: { userId, status: { in: ['win', 'loss', 'void'] }, ...settledFilter },
     _sum: { realizedUnits: true },
   })
   const pnlByMarket = new Map<string, number>()
@@ -90,17 +91,18 @@ export type ExposureAnalytics = {
 
 export async function getExposureAnalytics(userId: string, days?: number): Promise<ExposureAnalytics> {
   const since = days ? new Date(Date.now() - days * 86_400_000) : undefined
-  const dateFilter = since ? { gte: since } : undefined
+  const createdFilter = since ? { createdAt: { gte: since } } : {}
+  const settledFilter = since ? { updatedAt: { gte: since } } : {}
 
   // Daily PnL
   const settled = await prisma.bet.findMany({
-    where: { userId, status: { in: ['win', 'loss', 'void'] }, ...(dateFilter ? { createdAt: dateFilter } : {}) },
-    select: { createdAt: true, realizedUnits: true },
-    orderBy: { createdAt: 'asc' },
+    where: { userId, status: { in: ['win', 'loss', 'void'] }, ...settledFilter },
+    select: { updatedAt: true, realizedUnits: true },
+    orderBy: { updatedAt: 'asc' },
   })
   const byDay = new Map<string, number>()
   for (const row of settled) {
-    const key = row.createdAt.toISOString().slice(0, 10)
+    const key = row.updatedAt.toISOString().slice(0, 10)
     byDay.set(key, (byDay.get(key) ?? 0) + n(row.realizedUnits))
   }
 
@@ -109,7 +111,7 @@ export async function getExposureAnalytics(userId: string, days?: number): Promi
 
   const pendingBySportRows = await prisma.bet.groupBy({
     by: ['sport'],
-    where: { userId, status: 'pending', ...(dateFilter ? { createdAt: dateFilter } : {}) },
+    where: { userId, status: 'pending', ...createdFilter },
     _sum: { stakeUnits: true },
     orderBy: { sport: 'asc' },
   })

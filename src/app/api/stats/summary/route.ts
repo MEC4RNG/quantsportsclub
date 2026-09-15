@@ -9,23 +9,26 @@ export async function GET(req: NextRequest) {
     const userId = await getSessionUserId()
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const { searchParams } = new URL(req.url)
-    const days = Number(searchParams.get('days') ?? '30')
+    const requestedDays = Number(searchParams.get('days') ?? '30')
+    const days = Number.isFinite(requestedDays)
+      ? Math.min(3650, Math.max(1, Math.trunc(requestedDays)))
+      : 30
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
 
     const [won, lost, pending] = await Promise.all([
-      prisma.bet.count({ where: { userId, status: 'win',     createdAt: { gte: since } } }),
-      prisma.bet.count({ where: { userId, status: 'loss',    createdAt: { gte: since } } }),
+      prisma.bet.count({ where: { userId, status: 'win',     updatedAt: { gte: since } } }),
+      prisma.bet.count({ where: { userId, status: 'loss',    updatedAt: { gte: since } } }),
       prisma.bet.count({ where: { userId, status: 'pending', createdAt: { gte: since } } }),
     ])
 
     // Optional ROI: total realized / total staked for settled bets
     const [sumRealized, sumStake] = await Promise.all([
       prisma.bet.aggregate({
-        where: { userId, status: { in: ['win', 'loss'] }, createdAt: { gte: since } },
+        where: { userId, status: { in: ['win', 'loss'] }, updatedAt: { gte: since } },
         _sum: { realizedUnits: true },
       }),
       prisma.bet.aggregate({
-        where: { userId, status: { in: ['win', 'loss'] }, createdAt: { gte: since } },
+        where: { userId, status: { in: ['win', 'loss'] }, updatedAt: { gte: since } },
         _sum: { stakeUnits: true },
       }),
     ])

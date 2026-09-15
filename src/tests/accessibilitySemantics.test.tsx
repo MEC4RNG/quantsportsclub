@@ -43,5 +43,7 @@ describe('shared accessibility semantics', () => {
     expect(html).toContain('aria-describedby="odds-help"')
     expect(html).toContain('aria-describedby="stake-help"')
     expect(html).toContain('aria-live="polite"')
+    expect(html).toContain('id="recent-bets-heading"')
+    expect(html).toContain('View exposure and PnL')
   })
 })

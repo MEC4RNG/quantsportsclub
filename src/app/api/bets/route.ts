@@ -7,6 +7,7 @@ import { rateLimit } from '@/lib/rateLimit'
 import { getClientIp } from '@/lib/ip'
 import { requireApiKey } from '@/lib/authz'
 import { getSessionUserId } from '@/lib/sessionUser'
+import { impliedFromAmerican } from '@/lib/odds'
 
 // --- local helper: convert American odds -> Decimal odds (e.g. -110 -> 1.9091, +150 -> 2.5)
 function toDecimalFromAmerican(american: number): number {
@@ -14,15 +15,16 @@ function toDecimalFromAmerican(american: number): number {
   return american > 0 ? 1 + american / 100 : 1 + 100 / Math.abs(american)
 }
 
+const AmericanOdds = z.number().int().refine((value) => value !== 0, 'Odds cannot be zero')
 const CreateBet = z.object({
-  sport: z.string().min(1),
-  league: z.string().nullable().optional().default(null),
-  eventId: z.string().nullable().optional().default(null),
-  market: z.string().nullable().optional().default(null),
-  pick: z.string().min(1),
-  stakeUnits: z.number().positive(),
-  bookOdds: z.number().nullable().optional().default(null), // e.g. -110
-  fairOdds: z.number().nullable().optional().default(null), // e.g. -105
+  sport: z.string().trim().min(1).max(20),
+  league: z.string().trim().max(40).nullable().optional().default(null),
+  eventId: z.string().trim().max(120).nullable().optional().default(null),
+  market: z.string().trim().max(80).nullable().optional().default(null),
+  pick: z.string().trim().min(1).max(200),
+  stakeUnits: z.number().positive().max(100_000),
+  bookOdds: AmericanOdds.nullable().optional().default(null),
+  fairOdds: AmericanOdds.nullable().optional().default(null),
 }).strict()
 
 export async function GET(_req: NextRequest) {
@@ -64,17 +66,19 @@ export async function POST(req: NextRequest) {
     }
 
     // --- Parse input
-    const body = await req.json()
-    const parsed = CreateBet.parse(body)
+    const body = await req.json().catch(() => null)
+    const validation = CreateBet.safeParse(body)
+    if (!validation.success) {
+      return NextResponse.json({ error: 'Check the bet fields and odds' }, { status: 400 })
+    }
+    const parsed = validation.data
 
     // --- Derive odds & edge if provided
     const oddsDecimal =
       parsed.bookOdds != null ? toDecimalFromAmerican(parsed.bookOdds) : null
-    const fairDecimal =
-      parsed.fairOdds != null ? toDecimalFromAmerican(parsed.fairOdds) : null
     const edgePct =
-      oddsDecimal != null && fairDecimal != null
-        ? (fairDecimal - oddsDecimal) / oddsDecimal
+      parsed.bookOdds != null && parsed.fairOdds != null
+        ? (impliedFromAmerican(parsed.fairOdds) - impliedFromAmerican(parsed.bookOdds)) * 100
         : null
 
     // --- Prisma create
