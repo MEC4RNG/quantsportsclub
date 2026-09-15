@@ -66,6 +66,7 @@ it('accepts an internal draft package idempotently by exact hash', async () => {
   expect(response.status).toBe(200)
   expect((await response.json()).accepted).toBe(true)
   expect(upsert).toHaveBeenCalledOnce()
+  expect(upsert.mock.calls[0]![0].where).toEqual({ reviewKey: `MLB:${'a'.repeat(64)}` })
 })
 
 it('rejects unauthorized, hash-mismatched and publication-enabled packages', async () => {

@@ -35,15 +35,17 @@ export async function POST(req: NextRequest) {
   if (!parsed.success)
     return NextResponse.json({ error: 'Invalid content draft contract' }, { status: 422 })
   const draft = parsed.data
+  const reviewKey = `MLB:${draft.source_payload_sha256}`
   if (Date.parse(draft.reviewed_at_utc) > Date.now() + 5 * 60_000) {
     return NextResponse.json({ error: 'Review timestamp is in the future' }, { status: 422 })
   }
   try {
     const result = await prisma.contentDraftPackage.upsert({
-      where: { packageHash },
+      where: { reviewKey },
       update: {},
       create: {
         packageHash,
+        reviewKey,
         sourcePayloadHash: draft.source_payload_sha256,
         sport: 'MLB',
         slateDate: draft.slate_date,
@@ -51,9 +53,9 @@ export async function POST(req: NextRequest) {
         releaseStatus: draft.release_status,
         payload: draft,
       },
-      select: { id: true, packageHash: true, reviewStatus: true },
+      select: { id: true, reviewStatus: true },
     })
-    return NextResponse.json({ accepted: true, ...result })
+    return NextResponse.json({ accepted: true, packageHash, ...result })
   } catch {
     return NextResponse.json(
       { error: 'Draft storage unavailable; retry delivery' },

@@ -32,6 +32,7 @@ model MlbMarketSnapshot {
 model ContentDraftPackage {
   id                String   @id @default(cuid())
   packageHash       String   @unique @db.Char(64)
+  reviewKey         String?  @unique
   sourcePayloadHash String   @db.Char(64)
   sport             String
   slateDate         String
