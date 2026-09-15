@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { parse } from 'csv-parse/sync'
-import type { NflScheduleGame } from '@/lib/nflPerformance'
+import type { NflLeagueBaseline, NflScheduleGame } from '@/lib/nflPerformance'
 
 const SOURCE_URL = 'https://github.com/nflverse/nflverse-data/releases/download/schedules/games.csv'
 
@@ -52,6 +52,35 @@ export async function loadNflResults(season: number, weeks: number[]) {
     if (raw.length > 5_000_000) throw new Error('Unexpected source size')
     const rows = parse(raw, { columns: true, skip_empty_lines: true }) as CsvRow[]
     const games = new Map<string, NflScheduleGame>()
+    const baselineSeasons = [season - 3, season - 2, season - 1]
+    const baselineRows = rows.flatMap((row) => {
+      const away = score(row.away_score)
+      const home = score(row.home_score)
+      return row.game_type === 'REG' &&
+        baselineSeasons.includes(Number(row.season)) &&
+        away !== null &&
+        home !== null
+        ? [{ away, home }]
+        : []
+    })
+    const baseline: NflLeagueBaseline | null = baselineRows.length
+      ? {
+          seasons: baselineSeasons,
+          sampleGames: baselineRows.length,
+          awayWinProbability:
+            baselineRows.filter((game) => game.away > game.home).length / baselineRows.length,
+          homeWinProbability:
+            baselineRows.filter((game) => game.home > game.away).length / baselineRows.length,
+          tieProbability:
+            baselineRows.filter((game) => game.home === game.away).length / baselineRows.length,
+          meanTotal:
+            baselineRows.reduce((sum, game) => sum + game.away + game.home, 0) /
+            baselineRows.length,
+          meanHomeMargin:
+            baselineRows.reduce((sum, game) => sum + game.home - game.away, 0) /
+            baselineRows.length,
+        }
+      : null
     for (const row of rows) {
       if (
         Number(row.season) !== season ||
@@ -78,6 +107,7 @@ export async function loadNflResults(season: number, weeks: number[]) {
       scheduledGames: games.size,
       sourceUrl: SOURCE_URL,
       sourceHash: createHash('sha256').update(raw).digest('hex'),
+      baseline,
       unavailable: false,
     }
   } catch {
@@ -86,6 +116,7 @@ export async function loadNflResults(season: number, weeks: number[]) {
       scheduledGames: 0,
       sourceUrl: SOURCE_URL,
       sourceHash: null,
+      baseline: null,
       unavailable: true,
     }
   }

@@ -39,3 +39,72 @@ it('renders empty metrics and coverage limits honestly', async () => {
   expect(html).toContain('not betting returns')
   expect(html).toContain('games with no eligible forecast')
 })
+
+it('renders the chronological comparison with the early-sample gate', async () => {
+  session.mockResolvedValue({ user: {} })
+  findFirst.mockResolvedValue({ season: 2026 })
+  findMany.mockResolvedValue([
+    {
+      id: 'receipt',
+      payloadHash: 'a'.repeat(64),
+      generatedAt: new Date('2026-09-13T13:55:00Z'),
+      createdAt: new Date('2026-09-13T14:00:00Z'),
+      season: 2026,
+      week: 1,
+      trialsPerGame: 1000,
+      marketIndependent: true,
+      decisionUse: 'PRODUCTION_READY_NOT_FINAL_GAME_DAY',
+      games: [
+        {
+          gameId: '2026_01_A_H',
+          awayTeam: 'A',
+          homeTeam: 'H',
+          awayWinProbability: 0.35,
+          homeWinProbability: 0.6,
+          tieProbability: 0.05,
+          projectedMarginHome: 3,
+          projectedTotalCalibrated: 44,
+          validTrials: 1000,
+          invalidTrials: 0,
+          provisional: false,
+          decisionUse: 'PRODUCTION_READY_NOT_FINAL_GAME_DAY',
+        },
+      ],
+    },
+  ])
+  official.mockResolvedValue({
+    games: new Map([
+      [
+        '2026_01_A_H',
+        {
+          gameId: '2026_01_A_H',
+          season: 2026,
+          week: 1,
+          kickoffUtc: '2026-09-13T17:00:00Z',
+          awayTeam: 'A',
+          homeTeam: 'H',
+          awayScore: 20,
+          homeScore: 27,
+        },
+      ],
+    ]),
+    scheduledGames: 16,
+    sourceUrl: 'https://example.test/games.csv',
+    sourceHash: 'b'.repeat(64),
+    baseline: {
+      seasons: [2023, 2024, 2025],
+      sampleGames: 816,
+      awayWinProbability: 0.45,
+      homeWinProbability: 0.54,
+      tieProbability: 0.01,
+      meanTotal: 42,
+      meanHomeMargin: 2,
+    },
+    unavailable: false,
+  })
+  const html = renderToStaticMarkup(await Page())
+  expect(html).toContain('Chronological baseline comparison')
+  expect(html).toContain('descriptive only')
+  expect(html).toContain('1 of 50 graded games')
+  expect(html).toContain('2023–2024–2025')
+})

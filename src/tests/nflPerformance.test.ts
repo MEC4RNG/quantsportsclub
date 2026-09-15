@@ -78,6 +78,7 @@ it('grades home, away and tie outcomes with coverage kept separate', () => {
   expect(report.totalBias).toBe(-3)
   expect(report.marginMae).toBe(4)
   expect(report.winnerAccuracy).toBe(1)
+  expect(report.comparisonStatus).toBe('DESCRIPTIVE_ONLY_BELOW_MINIMUM_SAMPLE')
 
   const away = { ...final, awayScore: 30, homeScore: 20 }
   expect(gradeNflForecasts(forecasts, new Map([[away.gameId, away]]), 16).winnerAccuracy).toBe(0)
@@ -85,6 +86,24 @@ it('grades home, away and tie outcomes with coverage kept separate', () => {
   expect(gradeNflForecasts(forecasts, new Map([[tie.gameId, tie]]), 16).brier).toBeCloseTo(
     0.35 ** 2 + 0.6 ** 2 + (0.05 - 1) ** 2,
   )
+})
+
+it('compares the model and a chronological baseline on the same graded games', () => {
+  const forecasts = selectNflForecasts([result()]).forecasts
+  const baseline = {
+    seasons: [2023, 2024, 2025],
+    sampleGames: 816,
+    awayWinProbability: 0.45,
+    homeWinProbability: 0.54,
+    tieProbability: 0.01,
+    meanTotal: 42,
+    meanHomeMargin: 2,
+  }
+  const report = gradeNflForecasts(forecasts, new Map([[final.gameId, final]]), 16, baseline)
+  expect(report.baselineBrier).toBeCloseTo(0.45 ** 2 + (0.54 - 1) ** 2 + 0.01 ** 2)
+  expect(report.baselineTotalMae).toBe(5)
+  expect(report.baselineMarginMae).toBe(5)
+  expect(report.brierDelta).toBeCloseTo(report.brier! - report.baselineBrier!)
 })
 
 it('withholds missing scores and excludes identity or chronology mismatches', () => {

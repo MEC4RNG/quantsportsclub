@@ -54,8 +54,20 @@ export default async function NflPerformancePage() {
   const weeks = [...new Set(results.map((result) => result.week))].sort((a, b) => a - b)
   const official = latest
     ? await loadNflResults(latest.season, weeks)
-    : { games: new Map(), scheduledGames: 0, sourceUrl: '', sourceHash: null, unavailable: false }
-  const report = gradeNflForecasts(cohort.forecasts, official.games, official.scheduledGames)
+    : {
+        games: new Map(),
+        scheduledGames: 0,
+        sourceUrl: '',
+        sourceHash: null,
+        baseline: null,
+        unavailable: false,
+      }
+  const report = gradeNflForecasts(
+    cohort.forecasts,
+    official.games,
+    official.scheduledGames,
+    official.baseline,
+  )
   const metric = (value: number | null, digits = 3) =>
     value === null ? '—' : value.toFixed(digits)
   const pct = (value: number | null) => (value === null ? '—' : `${(value * 100).toFixed(1)}%`)
@@ -72,6 +84,15 @@ export default async function NflPerformancePage() {
       <p className={styles.notice}>
         First eligible pregame forecasts compared with verified final scores. Accuracy and delivery
         coverage are reported separately; these are not betting returns.
+      </p>
+      <p className={styles.notice}>
+        Comparison status:{' '}
+        <strong>
+          {report.comparisonStatus === 'MINIMUM_SAMPLE_REACHED'
+            ? 'minimum sample reached'
+            : `descriptive only — ${report.graded} of ${report.minimumComparisonGames} graded games`}
+        </strong>
+        . No tuning decision should use the early cohort.
       </p>
       <div className={styles.metrics}>
         <article>
@@ -117,6 +138,47 @@ export default async function NflPerformancePage() {
           The final-score source is temporarily unavailable. Forecasts remain intact and no games
           are graded until verified results return.
         </p>
+      )}
+      {official.baseline && (
+        <>
+          <h2>Chronological baseline comparison</h2>
+          <div className={styles.scroll}>
+            <table>
+              <caption>
+                Same graded games. Baseline fixed from {official.baseline.seasons.join('–')} regular
+                seasons ({official.baseline.sampleGames} games). Negative delta favors the model.
+              </caption>
+              <thead>
+                <tr>
+                  <th>Metric</th>
+                  <th>NFL GSIM</th>
+                  <th>Prior-season baseline</th>
+                  <th>Delta</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Multiclass Brier</td>
+                  <td>{metric(report.brier)}</td>
+                  <td>{metric(report.baselineBrier)}</td>
+                  <td>{metric(report.brierDelta)}</td>
+                </tr>
+                <tr>
+                  <td>Total-points MAE</td>
+                  <td>{metric(report.totalMae, 2)}</td>
+                  <td>{metric(report.baselineTotalMae, 2)}</td>
+                  <td>{metric(report.totalMaeDelta, 2)}</td>
+                </tr>
+                <tr>
+                  <td>Home-margin MAE</td>
+                  <td>{metric(report.marginMae, 2)}</td>
+                  <td>{metric(report.baselineMarginMae, 2)}</td>
+                  <td>{metric(report.marginMaeDelta, 2)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
       <h2>Forecast ledger</h2>
       <div className={styles.scroll}>
@@ -185,7 +247,10 @@ export default async function NflPerformancePage() {
         <p>
           Multiclass Brier is the sum of squared errors across away-win, home-win and tie
           probabilities. Total and margin metrics use the calibrated mean total and projected home
-          margin. Small samples do not establish calibration or profitability.
+          margin. The chronological baseline uses only the three completed regular seasons before
+          the forecast season: their outcome rates, mean total and mean home margin. Comparisons use
+          the exact same current games. Fewer than 50 graded games remains descriptive and does not
+          authorize tuning.
         </p>
         <p>
           Coverage denominator is every regular-season game in the received weeks, including games

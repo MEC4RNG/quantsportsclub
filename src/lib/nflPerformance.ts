@@ -1,4 +1,5 @@
 export const READY_DECISION_USE = 'PRODUCTION_READY_NOT_FINAL_GAME_DAY'
+export const MINIMUM_COMPARISON_GAMES = 50
 
 export type StoredNflGame = {
   gameId: string
@@ -47,6 +48,16 @@ export type NflScheduleGame = {
   homeTeam: string
   awayScore: number | null
   homeScore: number | null
+}
+
+export type NflLeagueBaseline = {
+  seasons: number[]
+  sampleGames: number
+  awayWinProbability: number
+  homeWinProbability: number
+  tieProbability: number
+  meanTotal: number
+  meanHomeMargin: number
 }
 
 function finiteProbability(value: number) {
@@ -99,6 +110,7 @@ export function gradeNflForecasts(
   forecasts: NflForecast[],
   schedule: Map<string, NflScheduleGame>,
   scheduledGames: number,
+  baseline: NflLeagueBaseline | null = null,
 ) {
   const rows = forecasts.map((forecast) => {
     const official = schedule.get(forecast.game.gameId)
@@ -111,6 +123,9 @@ export function gradeNflForecasts(
       totalError: null as number | null,
       marginError: null as number | null,
       correctWinner: null as boolean | null,
+      baselineBrier: null as number | null,
+      baselineTotalError: null as number | null,
+      baselineMarginError: null as number | null,
     }
     if (!official) return { ...base, status: 'Result source unavailable' }
     if (
@@ -134,6 +149,9 @@ export function gradeNflForecasts(
     const outcome = [awayWon, homeWon, tied]
     const predicted = probabilities.indexOf(Math.max(...probabilities))
     const actual = outcome.indexOf(1)
+    const baselineProbabilities = baseline
+      ? [baseline.awayWinProbability, baseline.homeWinProbability, baseline.tieProbability]
+      : null
     return {
       ...base,
       status: 'Graded',
@@ -147,12 +165,40 @@ export function gradeNflForecasts(
         forecast.game.projectedTotalCalibrated - (official.awayScore + official.homeScore),
       marginError: forecast.game.projectedMarginHome - (official.homeScore - official.awayScore),
       correctWinner: predicted === actual,
+      baselineBrier: baselineProbabilities
+        ? baselineProbabilities.reduce(
+            (sum, probability, index) => sum + (probability - outcome[index]!) ** 2,
+            0,
+          )
+        : null,
+      baselineTotalError: baseline
+        ? baseline.meanTotal - (official.awayScore + official.homeScore)
+        : null,
+      baselineMarginError: baseline
+        ? baseline.meanHomeMargin - (official.homeScore - official.awayScore)
+        : null,
     }
   })
   const graded = rows.filter((row) => row.status === 'Graded')
   const excluded = rows.filter((row) => row.status.startsWith('Excluded:')).length
   const mean = (values: number[]) =>
     values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null
+  const modelBrier = mean(graded.map((row) => row.brier!))
+  const modelTotalMae = mean(graded.map((row) => Math.abs(row.totalError!)))
+  const modelMarginMae = mean(graded.map((row) => Math.abs(row.marginError!)))
+  const baselineBrier = mean(
+    graded.flatMap((row) => (row.baselineBrier === null ? [] : [row.baselineBrier])),
+  )
+  const baselineTotalMae = mean(
+    graded.flatMap((row) =>
+      row.baselineTotalError === null ? [] : [Math.abs(row.baselineTotalError)],
+    ),
+  )
+  const baselineMarginMae = mean(
+    graded.flatMap((row) =>
+      row.baselineMarginError === null ? [] : [Math.abs(row.baselineMarginError)],
+    ),
+  )
   return {
     rows,
     scheduled: scheduledGames,
@@ -162,10 +208,25 @@ export function gradeNflForecasts(
     excluded,
     coverage: scheduledGames ? forecasts.length / scheduledGames : null,
     gradedCoverage: scheduledGames ? graded.length / scheduledGames : null,
-    brier: mean(graded.map((row) => row.brier!)),
-    totalMae: mean(graded.map((row) => Math.abs(row.totalError!))),
+    comparisonStatus:
+      graded.length >= MINIMUM_COMPARISON_GAMES
+        ? 'MINIMUM_SAMPLE_REACHED'
+        : 'DESCRIPTIVE_ONLY_BELOW_MINIMUM_SAMPLE',
+    minimumComparisonGames: MINIMUM_COMPARISON_GAMES,
+    brier: modelBrier,
+    totalMae: modelTotalMae,
     totalBias: mean(graded.map((row) => row.totalError!)),
-    marginMae: mean(graded.map((row) => Math.abs(row.marginError!))),
+    marginMae: modelMarginMae,
     winnerAccuracy: mean(graded.map((row) => Number(row.correctWinner))),
+    baselineBrier,
+    baselineTotalMae,
+    baselineMarginMae,
+    brierDelta: modelBrier === null || baselineBrier === null ? null : modelBrier - baselineBrier,
+    totalMaeDelta:
+      modelTotalMae === null || baselineTotalMae === null ? null : modelTotalMae - baselineTotalMae,
+    marginMaeDelta:
+      modelMarginMae === null || baselineMarginMae === null
+        ? null
+        : modelMarginMae - baselineMarginMae,
   }
 }
